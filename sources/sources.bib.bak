@@ -1,0 +1,26 @@
+@InProceedings{WesterhoffLessmannMeuterSiegemundKummert2016,
+  author    = {Westerhoff, Jens and Lessmann, Stephanie and Meuter, Mirko and Siegemund, Jan and Kummert, Anton},
+  booktitle = {2016 IEEE Intelligent Vehicles Symposium (IV)},
+  title     = {Development and comparison of homography based estimation techniques for camera to road surface orientation},
+  year      = {2016},
+  month     = {June},
+  pages     = {1034-1040},
+  abstract  = {This paper focuses on dynamic orientation estimation of a vehicle-mounted mono camera. In particular, the pitch and roll angles of the camera relative to the road surface. Information about the orientation angles is included in the homography (projective transformation) between two images of a planar road surface. The extraction of angles from a homography matrix is possible but not recommended due to parameter ambiguities. For this reason we do not estimate a full homography matrix but reduce the parameter space to two parameters. In this area of parameter estimation there are mainly two different approaches: The optical flow based approach and the image registration based approach. In order to decide which of these approaches is more favorable for the angle estimation problem, we develop one optical flow based and one image registration based angle estimation algorithm. We are the first directly evaluating and comparing both approaches with each other with the help of an artificial image sequence as well as real-world driving scenarios. In addition, this paper lifts the common limitation of roll angle of zero degree for dynamic camera orientation estimation. Our research finds that there is only a small difference between the parameter estimation results of the optical flow and image registration based approach.},
+  doi       = {10.1109/IVS.2016.7535516},
+}
+
+@Article{6096039,
+  author   = {Scaramuzza, Davide and Fraundorfer, Friedrich},
+  journal  = {IEEE Robotics Automation Magazine},
+  title    = {Visual Odometry [Tutorial]},
+  year     = {2011},
+  issn     = {1558-223X},
+  month    = {Dec},
+  number   = {4},
+  pages    = {80-92},
+  volume   = {18},
+  abstract = {Visual odometry (VO) is the process of estimating the egomotion of an agent (e.g., vehicle, human, and robot) using only the input of a single or If multiple cameras attached to it. Application domains include robotics, wearable computing, augmented reality, and automotive. The term VO was coined in 2004 by Nister in his landmark paper. The term was chosen for its similarity to wheel odometry, which incrementally estimates the motion of a vehicle by integrating the number of turns of its wheels over time. Likewise, VO operates by incrementally estimating the pose of the vehicle through examination of the changes that motion induces on the images of its onboard cameras. For VO to work effectively, there should be sufficient illumination in the environment and a static scene with enough texture to allow apparent motion to be extracted. Furthermore, consecutive frames should be captured by ensuring that they have sufficient scene overlap.},
+  doi      = {10.1109/MRA.2011.943233},
+}
+
+@Comment{jabref-meta: databaseType:bibtex;}
