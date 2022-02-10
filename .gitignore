@@ -22,3 +22,4 @@ thesis.gls
 *~
 projects/sequencer/Images/
 projects/sequencer/Videos/
+projects/*/__pycache__
