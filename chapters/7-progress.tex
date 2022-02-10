@@ -1,3 +1,19 @@
 \chapter{Project Journal}
 
 After reading into Homography and Visual Odometry I started experimenting with OpenCV. The first step was writing a little program that fills a buffer with pictures and simply shows them on screen. The images in this FIFO queue will in a later stage be used to detect keypoints en determine the translation-, rotation- and normal vector. This way the movement of a car can be determined.
+
+I've already done the following:
+\begin{itemize}
+    \item read all images of a folder
+    \item display all images of a folder and go through them step by step (with multiple stepsizes)
+    \item read video and convert every frame to a gray-scale image and save it to a folder
+    \item display a menu that gives you the choice of what you want to do:
+    \begin{itemize}
+        \item read video(s)
+        \item go through images in a folder
+        \item ...
+    \end{itemize}
+    
+\end{itemize}
+The menu makes it easy to try out the different functionalities and check if everything works as expected. It's also easy to experiment with OpenCV this way.
+The next step is to read images and store them in a buffer as described. This will be the next item added to the menu.
