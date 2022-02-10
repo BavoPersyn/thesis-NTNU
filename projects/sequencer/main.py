@@ -1,32 +1,45 @@
 import cv2
 import collections
-N = 2
-scale_percent = 25 # percent of original size
+import os
+import video_to_images
 
-def readimage(number):
-    image = cv2.imread('Images/Foto' + str(i) + '.jpg', -1)
-    dim = (int(image.shape[1] * scale_percent / 100), int(image.shape[0] * scale_percent / 100))
-    image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
-    imageQueue.append(image)
+SEQ_NUM = 1
 
-imageQueue = collections.deque(maxlen=N)
+for base, dirs, files in os.walk('./Videos'):
+    for directories in dirs:
+        SEQ_NUM += 1
 
-i = 1
 
-while i <= 50:
-    readimage(i)
-    cv2.imshow("foto", imageQueue[-1])
-    key = cv2.waitKey(0)
-    goodkey = False
-    while not goodkey:
-        if key == ord('n'):
-            goodkey = True
-            i += 1
-        elif key == ord('t'):
-            goodkey = True
-            i += 10
+def show_menu(sequence_number):
+    print("What do you want to do?")
+    print("1: Read video and convert to image folder")
+    print("Q: quit")
+    task = input()
+    if task == '1':
+        read_video(sequence_number)
+    # elif task == '2':
+    #     buffer(sequence_number)
+    elif task != 'Q' and task != 'q':
+        print("Choose one of the options please.")
+        show_menu(sequence_number)
+
+
+def read_video(sequence_number):
+    file = input("Give filename: ")
+
+    while file != "":
+        if not os.path.exists('./' + file):
+            print(file + " does not exist. Try again.")
         else:
-            key = cv2.waitKey(0)
+            os.mkdir("./Videos/sequence_" + str(sequence_number).zfill(3))
+            video_to_images.video_to_images(file, sequence_number)
+            sequence_number += 1
+        file = input("Give filename: ")
+    show_menu(sequence_number)
 
-cv2.destroyAllWindows()
 
+def buffer(sequence_number):
+    return
+
+
+show_menu(SEQ_NUM)
