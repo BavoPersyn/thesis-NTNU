@@ -57,6 +57,8 @@ def buffer(sequence, bufsiz=2):
     eof = False
     while not eof:
         if key == ord('n'):
+            if not nextright:
+                index += (bufsiz + 1)
             imageQueue.popleft()
             image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
             # print('Reading ' + folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
