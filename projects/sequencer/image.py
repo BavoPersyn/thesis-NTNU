@@ -7,7 +7,7 @@ scale_percent = 25  # percent of original size
 
 
 def readImage(number):
-    image = cv2.imread('Images/Foto' + str(i) + '.jpg', -1)
+    image = cv2.imread('Images/Foto' + str(number) + '.jpg', -1)
     dim = (int(image.shape[1] * scale_percent / 100), int(image.shape[0] * scale_percent / 100))
     image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
     imageQueue.append(image)
