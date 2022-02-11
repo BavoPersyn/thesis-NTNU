@@ -59,6 +59,9 @@ def buffer(sequence, bufsiz=2):
         if key == ord('n'):
             if not nextright:
                 index += (bufsiz + 1)
+            if not os.path.exists(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg'):
+                eof = True
+                continue
             imageQueue.popleft()
             image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
             # print('Reading ' + folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
@@ -83,6 +86,44 @@ def buffer(sequence, bufsiz=2):
             index -= 1
             nextright = False
             key = cv2.waitKey()
+        # elif key == ord('j'):
+        #     if not nextright:
+        #         index += bufsiz + 1
+        #     jump = input("How many frames do you want to jump? ")
+        #     while not jump.isnumeric():
+        #         jump = input("Give (positive) number please: ")
+        #     if not os.path.exists(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + int(jump))).zfill(5) + '.jpg'):
+        #         print("Jump not possible, end of file would be reached")
+        #         continue
+        #     index += (int(jump) - bufsiz)
+        #     for i in range(1, bufsiz + 1):
+        #         if not os.path.exists(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg'):
+        #             continue
+        #         index += i
+        #         image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg')
+        #         imageQueue.append(image)
+        #     cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
+        #     index += bufsiz
+        #     nextright = True
+        #     key = cv2.waitKey()
+        # elif key == ord('b'):
+        #     if nextright:
+        #         index -= (bufsiz + 1)
+        #     jump = input("How many frames do you want to jump backwards? ")
+        #     while not jump.isnumeric():
+        #         jump = input("Give (positive) number please: ")
+        #     if index - int(jump) < 1:
+        #         print("Jump not possible, end of file would be reached")
+        #         continue
+        #     index -= int(jump)
+        #     for i in range(1, bufsiz + 1):
+        #         index += i
+        #         image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg')
+        #         imageQueue.append(image)
+        #     cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
+        #     index += bufsiz
+        #     nextright = True
+        #     key = cv2.waitKey()
         elif key == ord('q'):
             eof = True
         else:
