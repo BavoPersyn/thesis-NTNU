@@ -56,10 +56,13 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
         if downsampling:
             image = cv2.pyrDown(image)
         imageQueue.append(image)
-    cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
-    key = cv2.waitKey(0)
+    title = 'Sequence' + str(sequence).zfill(3)
+    cv2.imshow(title, imageQueue[0])
+    cv2.setWindowTitle(title, title + ' Frame 1')
     eof = False
     while not eof:
+        cv2.setWindowTitle(title, title + ' Frame ' + str(index + bufindex - bufsiz))
+        key = cv2.waitKey(0)
         if key == ord('n'):
             if not os.path.exists(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg'):
                 bufindex += 1
@@ -67,7 +70,6 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
                     eof = True
                 else:
                     cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[bufindex])
-                    key = cv2.waitKey()
                 continue
             imageQueue.popleft()
             image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg',
@@ -78,17 +80,14 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
             imageQueue.append(image)
             cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
             index += 1
-            key = cv2.waitKey()
         elif key == ord('p'):
             if bufindex > 0:
                 bufindex -= 1
                 cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[bufindex])
-                key = cv2.waitKey()
                 continue
             previous = index - bufsiz - 1
             if previous < 1:
                 print("Beginning of sequence.")
-                key = cv2.waitKey()
                 continue
             imageQueue.pop()
             image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(previous)).zfill(5) + '.jpg',
@@ -99,7 +98,6 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
             imageQueue.appendleft(image)
             cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
             index -= 1
-            key = cv2.waitKey()
         elif key == ord('j'):
             jump = input("How many frames do you want to jump? ")
             while not jump.isnumeric():
@@ -120,7 +118,6 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
                     image = cv2.pyrDown(image)
                 imageQueue.append(image)
             cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
-            key = cv2.waitKey()
         elif key == ord('b'):
             jump = input("How many frames do you want to jump backwards? ")
             while not jump.isnumeric():
@@ -132,7 +129,6 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
                 continue
             index -= jump
             imageQueue.clear()
-            print(len(imageQueue))
             for i in range(start, index):
                 image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(i).zfill(5) + '.jpg', color)
                 image = image[horizon:height, 0:width]
@@ -141,11 +137,10 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
                 imageQueue.append(image)
             cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
 
-            key = cv2.waitKey()
         elif key == ord('q'):
             eof = True
         else:
-            key = cv2.waitKey()
+            continue
     return
 
 
