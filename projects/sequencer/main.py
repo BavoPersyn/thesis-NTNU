@@ -24,7 +24,7 @@ def show_menu(sequence_number):
         sequence = input("Which sequence do you want to use? ")
         while not path.exists('./Videos/sequence_' + str(sequence).zfill(3)):
             sequence = input("Give an existing sequence: ")
-        buffer(sequence)
+        buffer(sequence, downsampling=True)
     elif task != 'Q' and task != 'q':
         print("Choose one of the options please.")
         show_menu(sequence_number)
@@ -44,13 +44,17 @@ def read_video(sequence_number):
     show_menu(sequence_number)
 
 
-def buffer(sequence, bufsiz=2):
+def buffer(sequence, bufsiz=2, colormode=0, downsampling=False):
     nextright = True
     index = bufsiz + 1
+    height, width, channels, frames, horizon = read_info(sequence)
     imageQueue = collections.deque(maxlen=bufsiz)
     folder = './Videos/sequence_' + str(sequence).zfill(3)
     for i in range(1, bufsiz + 1):
-        image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(i)).zfill(5) + '.jpg')
+        image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(i)).zfill(5) + '.jpg', colormode)
+        image = image[horizon:height, 0:width]
+        if downsampling:
+            image = cv2.pyrDown(image)
         imageQueue.append(image)
     cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
     key = cv2.waitKey(0)
@@ -63,8 +67,10 @@ def buffer(sequence, bufsiz=2):
                 eof = True
                 continue
             imageQueue.popleft()
-            image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
-            # print('Reading ' + folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
+            image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg', colormode)
+            image = image[horizon:height, 0:width]
+            if downsampling:
+                image = cv2.pyrDown(image)
             imageQueue.append(image)
             cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
             index += 1
@@ -79,8 +85,10 @@ def buffer(sequence, bufsiz=2):
                 key = cv2.waitKey()
                 continue
             imageQueue.pop()
-            image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
-            # print('Reading ' + folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg')
+            image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg', colormode)
+            image = image[horizon:height, 0:width]
+            if downsampling:
+                image = cv2.pyrDown(image)
             imageQueue.appendleft(image)
             cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
             index -= 1
@@ -100,7 +108,9 @@ def buffer(sequence, bufsiz=2):
         #         if not os.path.exists(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg'):
         #             continue
         #         index += i
-        #         image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg')
+        #         image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg', colormode)
+        #         if downsampling:
+        #             image = cv2.pyrDown(image)
         #         imageQueue.append(image)
         #     cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
         #     index += bufsiz
@@ -118,7 +128,9 @@ def buffer(sequence, bufsiz=2):
         #     index -= int(jump)
         #     for i in range(1, bufsiz + 1):
         #         index += i
-        #         image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg')
+        #         image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index + i)).zfill(5) + '.jpg', colormode)
+        #         if downsampling:
+        #             image = cv2.pyrDown(image)
         #         imageQueue.append(image)
         #     cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
         #     index += bufsiz
@@ -129,6 +141,19 @@ def buffer(sequence, bufsiz=2):
         else:
             key = cv2.waitKey()
     return
+
+
+def read_info(sequence):
+    info = open('Videos/sequence_' + str(sequence).zfill(3) + '/info.txt', 'r')
+    info.readline()
+    height = int(info.readline().split(' ')[-1])
+    width = int(info.readline().split(' ')[-1])
+    channels = int(info.readline().split(' ')[-1])
+    frames = int(info.readline().split(' ')[-1])
+    horizon = int(info.readline().split(' ')[-1])
+    return height, width, channels, frames, horizon
+
+
 
 
 show_menu(SEQ_NUM)
