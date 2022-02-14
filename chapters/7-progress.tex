@@ -20,3 +20,6 @@ The next step is to read images and store them in a buffer as described. This wi
 
 \section{11/02/2022}
 Images of a sequence stored in a folder can now be read into a buffer, going back and forth is perfectly possible. Jumping multiple frames is also implemented but isn't working properly yet.
+
+\section{14/02/2022}
+The way videos are read has been changed so it stores the original images instead of converting them already. The read function also writes info about the size and length of the sequence, this is stored in a text-file. The buffer-function now reads the images and crops them, downsamples them and converts them to gray scale before adding the image into the buffer leaving us with only the important info of the images.
