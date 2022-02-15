@@ -4,6 +4,7 @@ import os
 import video_to_images
 import os.path
 from os import path
+import numpy as np
 
 SEQ_NUM = 1
 
@@ -48,10 +49,20 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
     bufindex = 0
     index = bufsiz + 1
     height, width, channels, frames, horizon = read_info(sequence)
+    principal_point = (int(width / 2), int(height / 2))
     imageQueue = collections.deque(maxlen=bufsiz)
     folder = './Videos/sequence_' + str(sequence).zfill(3)
+    mask = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'BW.jpg')
+    (T, mask) = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    mask = mask / 255
+    if color == 0:
+        black = [0]
+    else:
+        black = [0, 0, 0]
     for i in range(1, bufsiz + 1):
         image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(i)).zfill(5) + '.jpg', color)
+        image[np.where((mask <= [0, 0, 0]).all(axis=2))] = black
+        image = cv2.circle(image, principal_point, radius=5, color=(255, 0, 0), thickness=3)
         image = image[horizon:height, 0:width]
         if downsampling:
             image = cv2.pyrDown(image)
@@ -74,6 +85,8 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
             imageQueue.popleft()
             image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg',
                                color)
+            image[np.where((mask <= [0, 0, 0]).all(axis=2))] = black
+            image = cv2.circle(image, principal_point, radius=5, color=(255, 0, 0), thickness=3)
             image = image[horizon:height, 0:width]
             if downsampling:
                 image = cv2.pyrDown(image)
@@ -92,6 +105,8 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
             imageQueue.pop()
             image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(previous)).zfill(5) + '.jpg',
                                color)
+            image[np.where((mask <= [0, 0, 0]).all(axis=2))] = black
+            image = cv2.circle(image, principal_point, radius=5, color=(255, 0, 0), thickness=3)
             image = image[horizon:height, 0:width]
             if downsampling:
                 image = cv2.pyrDown(image)
@@ -113,6 +128,8 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
                 if not os.path.exists(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(i).zfill(5) + '.jpg'):
                     continue
                 image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(i).zfill(5) + '.jpg', color)
+                image[np.where((mask <= [0, 0, 0]).all(axis=2))] = black
+                image = cv2.circle(image, principal_point, radius=5, color=(255, 0, 0), thickness=3)
                 image = image[horizon:height, 0:width]
                 if downsampling:
                     image = cv2.pyrDown(image)
@@ -131,6 +148,8 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
             imageQueue.clear()
             for i in range(start, index):
                 image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(i).zfill(5) + '.jpg', color)
+                image[np.where((mask <= [0, 0, 0]).all(axis=2))] = black
+                image = cv2.circle(image, principal_point, radius=5, color=(255, 0, 0), thickness=3)
                 image = image[horizon:height, 0:width]
                 if downsampling:
                     image = cv2.pyrDown(image)
