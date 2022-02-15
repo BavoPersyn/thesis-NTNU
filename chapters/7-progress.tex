@@ -22,4 +22,17 @@ The next step is to read images and store them in a buffer as described. This wi
 Images of a sequence stored in a folder can now be read into a buffer, going back and forth is perfectly possible. Jumping multiple frames is also implemented but isn't working properly yet.
 
 \section{14/02/2022}
-The way videos are read has been changed so it stores the original images instead of converting them already. The read function also writes info about the size and length of the sequence, this is stored in a text-file. The buffer-function now reads the images and crops them, downsamples them and converts them to gray scale before adding the image into the buffer leaving us with only the important info of the images.
+\begin{itemize}
+    \item The way videos are read has been changed so it stores the original images instead of converting them already. The read function also writes info about the size and length of the sequence, this is stored in a text-file. The buffer-function now reads the images and crops them, downsamples them and converts them to gray scale before adding the image into the buffer leaving us with only the important info of the images.
+    \item You can now easily navigate through the images of the sequence in the buffer. You can go forwards/backwards one by one and can also jump multiple frames forwards and backwards. The title of the window is updated every time with the frame number so it's easy to see which frame is being displayed.
+    \item A black mask of the car is put over the image. Remark: although the car itself is fixed, the drivers head is not, the helmet moves so this can't be masked out with one single image. The wheels aren't fixed as well, they turn. With this fixed mask you sometimes mask too much or too little.
+    \item The principal point of a sequence is calculated and stored. 
+\end{itemize}
+\textbf{Remark: }The car has to follow a path of cones, the yellow cones mark the road. However, at some point the car has to slalom between blue cones that are placed in the middle of the road (in between the yellow cones). If our system just detects cones it's going detect the blue ones as road marks as well. Also, if in a later stage we base our movement on the placement of the cones and we blindly use this part of the sequence as input data, the system will get confused as the car moves through the (blue) cones I think.
+
+
+
+
+
+
+
