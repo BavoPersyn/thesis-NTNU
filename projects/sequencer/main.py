@@ -155,7 +155,30 @@ def buffer(sequence, bufsiz=2, color=0, downsampling=False):
                     image = cv2.pyrDown(image)
                 imageQueue.append(image)
             cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
-
+        elif key == ord(' '):
+            key = None
+            cv2.setWindowTitle(title, title + ' playing.')
+            while not key == ord(' ') and not eof:
+                if not os.path.exists(
+                        folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg'):
+                    bufindex += 1
+                    if bufindex == bufsiz:
+                        eof = True
+                    else:
+                        cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[bufindex])
+                    continue
+                imageQueue.popleft()
+                image = cv2.imread(folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg',
+                                   color)
+                image[np.where((mask <= [0, 0, 0]).all(axis=2))] = black
+                image = cv2.circle(image, principal_point, radius=5, color=(255, 0, 0), thickness=3)
+                image = image[horizon:height, 0:width]
+                if downsampling:
+                    image = cv2.pyrDown(image)
+                imageQueue.append(image)
+                cv2.imshow('Sequence' + str(sequence).zfill(3), imageQueue[0])
+                index += 1
+                key = cv2.waitKey(1)
         elif key == ord('q'):
             eof = True
         else:
