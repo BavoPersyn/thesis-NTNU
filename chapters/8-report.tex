@@ -1,8 +1,8 @@
-\chapter{Report}
+\chapter{Approach to estimate vehicle motion}
 
-\section{Objective of thesis}
+\section{Objectives}
 \subsection{Primary objectives}
-The goal of this master thesis is to build a software system, using computer vision algorithms. First of all, it should be able to estimate the frame-to-frame motion of a racing car and the momentary orientation of the camera with respect to the ground plane. Secondly, at any time, the system should be able to create a birds eye view map of the environment that is in front of the car, in particular the positions of the cones which are used to mark the drivable path.\bigskip 
+The goal is to build a software system, using computer vision algorithms. First of all, it should be able to estimate the frame-to-frame motion of a racing car and the momentary orientation of the camera with respect to the ground plane. Secondly, at any time, the system should be able to create a birds eye view map of the environment that is in front of the car, in particular the positions of the cones which are used to mark the drivable path.\bigskip 
 
 \subsection{Secondary objectives}
 When a good solution is found to these two problems, the system could be expanded and obstacles, side barriers etc. could be entered into the map previously mentioned. Based on the previous features of the system, two additional features could be added: reconstruction of the car's trajectory over time and building a global map from the instantaneous map.\bigskip
@@ -37,3 +37,28 @@ The car itself is not moving relative to the camera, as the camera is fixed to t
     \caption{Preprocessed image}
     \label{fig:output_image}
 \end{figure}
+
+\section{Frame-to-frame motion of the car}
+We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix ${R}$, translation vector $\vec{t}$ and normal vector $\vec{n}$ must be calculated. These can be calculated using keypoints in the frames. 
+
+\subsection{What are keypoints}
+Keypoints are points in an image that carry a lot of information. If you were to take the point out of the image, it would be easy to recognise where the point is located in the image. To illustrate this, look at figure \autoref{fig:features}, this shows an image with 3 sections cut out. If you had to search for the place section C was cut out, it would be impossible as it could be almost anywhere. Section B is easier to locate, but you could move the cut horizontally without affecting the cut. Moving it vertically (along the gradient) the cut would change. Section A is the easiest to locate. There's no doubt as to where the cut is taken. Moving in either horizontal and vertical direction affects the cut.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/features.png}
+    \caption{Keypoints in an image}
+    \label{fig:features}
+\end{figure}
+
+This shows that corners are good keypoints in images as they have multiple gradients in different directions and can thus be easily located. Blobs could also be good keypoints. Blobs are a number of pixels that are connected through a common property.
+
+\subsection{Matching keypoints}
+The point in finding the keypoints is to know where these specific points are in another image. To match these keypoints, the region around the keypoint is looked at. This is called keypoint description and based on the description, matches are made between keypoints in different images. These matches hold the information to calculate the motion of the car.\bigskip
+
+There are a lot of different methods and algorithms to find keypoints, describe them and match them.\bigskip
+
+One way to match the keypoints is a Brute-Force Matcher. It's a rather simple matcher that takes the descriptor of a feature in image 1 and matches this descriptor with all the descriptors of image 2. It calculates the distance between these descriptors and returns the closest match. Different distance measurement types can be used. Cross checking is also a possibility, this means that matches are checked both ways. The matcher only returns those matches that are closest in both directions.
+
+\subsection{ORB}
+ORB or Oriented FAST and Rotated BRIEF is, as the name suggests, a combination of the FAST detector and BRIEF descriptor. ORB enhances the performance of the two with modifications. FAST is used to find keypoints, after which Harris Corner measure is used to find the top points among them. Pyramid is used to produce multiscale-features.
