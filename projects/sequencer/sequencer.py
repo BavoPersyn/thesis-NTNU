@@ -23,6 +23,8 @@ class Sequencer:
         self.mask = None
         self.black = None
         self.color = 0
+        self.orb = cv2.ORB_create(50)
+        self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
         for base, dirs, files in os.walk('./Videos'):
             for directories in dirs:
                 self.SEQ_NUM += 1
@@ -120,19 +122,23 @@ class Sequencer:
         self.fill_buffer(sequence, 1, self.BUFSIZ + 1)
 
         title = 'Sequence' + str(sequence).zfill(3)
-        cv2.imshow(title, self.process_image(self.imageQueue[0]))
-        cv2.setWindowTitle(title, title + ' Frame 1')
+        # self.show_image(sequence, self.imageQueue[0])
+        self.detect_and_match()
+        # cv2.setWindowTitle(title, title + ' Frame 1')
         eof = False
         while not eof:
-            cv2.setWindowTitle(title, title + ' Frame ' + str(index + bufindex - self.BUFSIZ))
+            # cv2.setWindowTitle(title, title + ' Frame ' + str(index + bufindex - self.BUFSIZ))
             key = cv2.waitKey(0)
             if key == ord('n'):
                 eof, bufindex = self.add_next_image(sequence, index, bufindex)
-                cv2.imshow('Sequence' + str(sequence).zfill(3), self.process_image(self.imageQueue[0]))
+                # self.detect_and_match()
+                # self.show_image(sequence, self.imageQueue[0])
+                self.detect_and_match()
                 index += 1
             elif key == ord('p'):
                 bufindex = self.add_previous_image(sequence, index, bufindex)
-                cv2.imshow('Sequence' + str(sequence).zfill(3), self.process_image(self.imageQueue[0]))
+                # self.show_image(sequence, self.imageQueue[0])
+                self.detect_and_match()
                 index -= 1
             elif key == ord('j'):
                 jump = input("How many frames do you want to jump? ")
@@ -147,7 +153,8 @@ class Sequencer:
                 index += jump
                 self.imageQueue.clear()
                 self.fill_buffer(sequence, start, index)
-                cv2.imshow('Sequence' + str(sequence).zfill(3), self.process_image(self.imageQueue[0]))
+                # self.show_image(sequence, self.imageQueue[0])
+                self.detect_and_match()
             elif key == ord('b'):
                 jump = input("How many frames do you want to jump backwards? ")
                 while not jump.isnumeric():
@@ -160,13 +167,15 @@ class Sequencer:
                 index -= jump
                 self.imageQueue.clear()
                 self.fill_buffer(sequence, start, index)
-                cv2.imshow('Sequence' + str(sequence).zfill(3), self.process_image(self.imageQueue[0]))
+                # self.show_image(sequence, self.imageQueue[0])
+                self.detect_and_match()
             elif key == ord(' '):
                 key = None
-                cv2.setWindowTitle(title, title + ' playing.')
+                # cv2.setWindowTitle(title, title + ' playing.')
                 while not key == ord(' ') and not eof:
                     eof, bufindex = self.add_next_image(sequence, index, bufindex)
-                    cv2.imshow('Sequence' + str(sequence).zfill(3), self.process_image(self.imageQueue[0]))
+                    # self.show_image(sequence, self.imageQueue[0])
+                    self.detect_and_match()
                     index += 1
                     key = cv2.waitKey(1)
             elif key == ord('q'):
@@ -185,11 +194,26 @@ class Sequencer:
         self.horizon = int(info.readline().split(' ')[-1])
         self.principal_point = (int(self.width / 2), int(self.height / 2))
 
-    def process_image(self, image):
-        if self.color == 0:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    def show_image(self, sequence, image):
+        # if self.color == 0:
+        #     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
         image = cv2.circle(image, self.principal_point, radius=5, color=(255, 0, 0), thickness=3)
         image = image[self.horizon:self.height, 0:self.width]
         image = cv2.pyrDown(image)
+        # cv2.imshow('Sequence' + str(sequence).zfill(3), image)
         return image
+
+    def detect_and_match(self):
+        img1 = cv2.cvtColor(self.imageQueue[0], cv2.COLOR_BGR2GRAY)
+        img2 = cv2.cvtColor(self.imageQueue[1], cv2.COLOR_BGR2GRAY)
+        kp1, des1 = self.orb.detectAndCompute(img1, None)
+        kp2, des2 = self.orb.detectAndCompute(img2, None)
+        matches = self.matcher.match(des1, des2, None)
+        matches = sorted(matches, key = lambda x:x.distance)
+        # img1 = self.show_image(1, img1)
+        # img2 = self.show_image(1, img2)
+        out = cv2.drawMatches(img1, kp1,  img2, kp2, matches[:20], None)
+        out = cv2.pyrDown(out)
+        cv2.imshow("Matches", out)
+        # cv2.waitKey(0)
