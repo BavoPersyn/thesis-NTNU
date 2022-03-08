@@ -225,7 +225,16 @@ class Sequencer:
                 # at leas one of the keypoints is part of the ego-car, this match will be ignored
                 continue
             good_matches.append(match)
-
+            points1[j, :] = kp1[match.queryIdx].pt
+            points2[j, :] = kp2[match.trainIdx].pt
+            j += 1
+        points1 = np.reshape(points1[points1 != [0., 0.]], (-1, 2))
+        points2 = np.reshape(points2[points2 != [0., 0.]], (-1, 2))
+        if j <= 4:
+            print("Not enough points to calculate Homography.")
+        else:
+            h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+            print("Estimated homography : \n", h)
         # show the best 20 matches
         out = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:20], None)
         out = cv2.pyrDown(out)
