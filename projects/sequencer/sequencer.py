@@ -205,15 +205,29 @@ class Sequencer:
         return image
 
     def detect_and_match(self):
+        # convert images in buffer to grayscale
         img1 = cv2.cvtColor(self.imageQueue[0], cv2.COLOR_BGR2GRAY)
         img2 = cv2.cvtColor(self.imageQueue[1], cv2.COLOR_BGR2GRAY)
+        # compute keypoints and descriptors
         kp1, des1 = self.orb.detectAndCompute(img1, None)
         kp2, des2 = self.orb.detectAndCompute(img2, None)
+        # match keypoints and sort them
         matches = self.matcher.match(des1, des2, None)
-        matches = sorted(matches, key = lambda x:x.distance)
-        # img1 = self.show_image(1, img1)
-        # img2 = self.show_image(1, img2)
-        out = cv2.drawMatches(img1, kp1,  img2, kp2, matches[:20], None)
+        matches = sorted(matches, key=lambda x: x.distance)
+        points1 = np.zeros((len(matches), 2), dtype=np.float32)
+        points2 = np.zeros((len(matches), 2), dtype=np.float32)
+        good_matches = []
+        j = 0
+        for match in matches:
+            p1 = (int(kp1[match.queryIdx].pt[0]), int(kp1[match.queryIdx].pt[1]))
+            p2 = (int(kp1[match.trainIdx].pt[0]), int(kp1[match.trainIdx].pt[1]))
+            if (self.mask[p1[1]][p1[0]] == [0, 0, 0]).all() or (self.mask[p2[1]][p2[0]] == [0, 0, 0]).all():
+                # at leas one of the keypoints is part of the ego-car, this match will be ignored
+                continue
+            good_matches.append(match)
+
+        # show the best 20 matches
+        out = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:20], None)
         out = cv2.pyrDown(out)
         cv2.imshow("Matches", out)
         # cv2.waitKey(0)
