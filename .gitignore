@@ -23,3 +23,4 @@ thesis.gls
 projects/sequencer/Images/
 projects/sequencer/Videos/
 projects/*/__pycache__
+projects/sequencer/scratch.py
