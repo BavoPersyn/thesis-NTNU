@@ -19,6 +19,53 @@ An important feature of keypoint descriptors is their robustness, SIFT and SURF 
 ORB is based on a combination of the FAST keypoint detector and the BRIEF keypoint descriptor. With ORB, Rublee et al. (2011) \cite{6126544} didn't just develop a combination of FAST and BRIEF, but enhanced it with extra features to make it rotation invariant and resistant to noise while maintaining the focus on speed.
 
 \subsection{FAST Keypoint Orientation (oFAST)}
-Features from Accelerated Segment Test or FAST, proposed by Rosten \& Drummond \cite{10.1007/11744023_34} is a keypoint detector developed with real-time applications in mind. It has thus, as the name suggest, good speed performance. However, the problem with FAST is that there is no orientation component. This is the first thing added by Rublee et al. (2011) \cite{6126544}.
+Features from Accelerated Segment Test or FAST, proposed by Rosten \& Drummond \cite{10.1007/11744023_34} is a keypoint detector developed with real-time applications in mind. It has thus, as the name suggest, good speed performance. However, the problem with FAST is that there is no orientation component. This is the first thing added by Rublee et al. (2011) \cite{6126544}.\bigskip
 
-To detect if pixel $p$ is a corner, a circle of $x$ pixels around $p$ is considered. In ORB, $r$ equals 9, which is called FAST-9. To decide if $p$ is a corner, FAST uses a threshold value $t$. If at least $n$
+\subsubsection{Features from Accelerated Segment Test (FAST)}
+To detect if pixel $p$ is a corner, the pixels on circle with radius $r$ around $p$ are considered, see Figure \ref{fig:fastcircle}. In ORB, $r$ equals 9, which is called FAST-9. The intensity of $p$ is $I_p$. To decide if $p$ is a corner, FAST uses a threshold value $t$. If there exists a set of $n$ (usually 12) contiguous pixels on the circle that are either all brighter than $I_p + t$ or all darker than $I_p - t$, then $p$ is considered a corner.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/fast_circle.jpg}
+    \caption{Fast with radius 3}
+    \label{fig:fastcircle}
+\end{figure}
+
+To make this process even faster, a high-speed test was introduced to eliminate a large number of non-corners. This high-speed test checks only four pixels, the ones on top, bottom, left and right. In Figure \ref{fig:fastcircle} these are pixels 1, 5, 9 and 13. At least three out of four of these pixels have to be either all brighter than $I_p + t$ or all darker than $I_p - t$. If this is not the case, there is no possibility for $p$ to be a corner. If this is the case, the full test will decide whether the $p$ is a corner.\bigskip
+
+The problem with FAST is that it doesn't produce a value to indicate how much of a corner a certain pixel is. To cope with this shortcoming, ORB uses a Harris corner measure \cite{Harris1988ACC} to sort the keypoints detected by the FAST detector. After using FAST with a low threshold value (to ensure at least $N$ keypoints), it sorts the corners based on the Harris measure, leaving only the top $N$ points. As FAST doesn't produce multi-scale features, a scale pyramid is used to calculate FAST features at each level in the pyramid.
+
+\subsubsection{Orientation using Intensity Centroid}
+ORB uses Intensity Centroid \cite{ROSIN1999291}, a measure of corner orientation. It uses geometric moments to determine the corner orientation. Rosin defines the momentum as: 
+\begin{equation}
+    m_{pq} = \sum_{x,y} x^p y^q I(x, y),
+\end{equation}
+the centroid can then be found by:
+\begin{equation}
+    C = (\frac{m_{10}}{m_{00}},\frac{m_{01}}{m_{00}}).
+\end{equation}
+Placing $O$ at the center of the corner, a vector $\Vec{OC}$ can be created, the corner orientation is then:
+\begin{equation}
+    \theta = atan2(m_{01}, m_{10})
+\end{equation}
+where atan2(x, y) or 2-argument arctangent is defined as the angle in the Euclidean plane, given in radians, between the positive x axis and the ray to the point $(x, y) \neq (0, 0)$ \cite{unknown-author-2022}.\bigskip
+
+ORB improves the rotation invariance even more by making sure that the moments are computed with $x$ and $y$ remaining within a circular region of radius $r$. \cite{6126544} found the patch size to be a fit value for $r$. This means $x$ and $y$ run from $[-r, r]$. $\mid C\mid$ approaching 0 makes the measure become unstable, but this is rarely the case for FAST corners \cite{6126544}.
+
+\subsection{Rotation-Aware BRIEF (rBRIEF)}
+We now have keypoints and their orientation, the next step is to compute the descriptor using BRIEF. As stated before, BRIEF is not invariant to rotation, which is why ORB introduced a modification: Rotation-Aware BRIEF.
+
+\subsubsection{Binary Robust Independent Elementary Features (BRIEF)}
+BRIEF \cite{10.1007/978-3-642-15561-1_56} uses a small number of pairwise comparisons to classify patches from which it makes a bit vector. They defined the test $\tau$ on patch $\boldsymbol{p}$ like this:
+\begin{equation}
+    \tau(\boldsymbol{p};\boldsymbol{x},\boldsymbol{y}) := \left\{\begin{array}{ll}
+         1\quad : \boldsymbol{p}(\boldsymbol{x}) < \boldsymbol{p}(\boldsymbol{y})\\
+         0\quad : \boldsymbol{p}(\boldsymbol{x}) \geq \boldsymbol{p}(\boldsymbol{y})
+    \end{array} \right.,
+\end{equation}
+with $\boldsymbol{p}(\boldsymbol{x})$ the pixel intensity in a smoothed version of $\boldsymbol{p}$ at $\boldsymbol{x} = (u, v)^T$. The BRIEF descriptor is then defined as the $n$-dimensional bitstring
+\begin{equation}
+    f_n(\boldsymbol{p}) := \sum_{1\leq i\leq n} 2^{i-1}\tau(\boldsymbol{p};\boldsymbol{x},\boldsymbol{y}) .
+\end{equation}
+
+relying on the experiments of \cite{10.1007/978-3-642-15561-1_56}, ORB will use $n = 256$, a Gaussian distribution around the center of the patch and smooth the image using an integral image where each test point is a $5 \times 5$ subwindow of a $31 \times 31$ pixel patch. Based on experimental results in \cite{10.1007/978-3-642-15561-1_56} and their own these showed to be performing well.
