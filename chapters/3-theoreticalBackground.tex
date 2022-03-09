@@ -5,7 +5,7 @@
 \section{Keypoint detection}
 
 \subsection{What are keypoints}
-According to Trucco & Verri (1998) \cite{book} a local keypoint is defined as a local, meaningful, detectable part of an image. In the following, the term keypoint will be used for local keypoint. A keypoint is a local feature of an image, a part with some properties that differentiates it from other parts of the image. By meaningful, they mean that the feature is associated to interesting scene elements such as sharp intensity variations created by the contours of the objects in the scene. To be detectable they state that location algorithms must exist, if not, a keypoint would be of no use.
+According to Trucco \& Verri (1998) \cite{book} a local keypoint is defined as a local, meaningful, detectable part of an image. In the following, the term keypoint will be used for local keypoint. A keypoint is a local feature of an image, a part with some properties that differentiates it from other parts of the image. By meaningful, they mean that the feature is associated to interesting scene elements such as sharp intensity variations created by the contours of the objects in the scene. To be detectable they state that location algorithms must exist, if not, a keypoint would be of no use.
 
 \subsection{Keypoint Detection}
 There is a wide variety of keypoint detectors, each with their own way of finding keypoints. The two big categories they can be divided in are corner detectors and scale-space detectors. Examples of corner detectors are Harris, FAST and Shi-Tomasi. SIFT and SURF are examples of scale-space detectors. The advantage of corner detectors is that they are quite invariant to view changes. On the other hand, scale changes pose a problem. Scale-space detectors on the other hand try to detect keypoints on different scales of the image to find scale invariant keypoints
@@ -15,5 +15,10 @@ The detection of keypoints is not enough. If we want to work with them, we need 
 
 An important feature of keypoint descriptors is their robustness, SIFT and SURF (continuous descriptors) for instance are robust to illumination, rotation and scale changes. BRIEF (binary descriptor) on the other hand is only robust to illumination, so illumination and scale changes are a problem when using BRIEF. ORB (binary descriptor) tried to eliminate this shortcoming of BRIEF and is invariant to illumination and rotation.
 
-\subsection{Oriented FAST and rotated BRIEF (ORB)}
-ORB is a combination of the FAST keypoint detector and the BRIEF keypoint descriptor, to 
+\section{Oriented FAST and rotated BRIEF (ORB)}
+ORB is based on a combination of the FAST keypoint detector and the BRIEF keypoint descriptor. With ORB, Rublee et al. (2011) \cite{6126544} didn't just develop a combination of FAST and BRIEF, but enhanced it with extra features to make it rotation invariant and resistant to noise while maintaining the focus on speed.
+
+\subsection{FAST Keypoint Orientation (oFAST)}
+Features from Accelerated Segment Test or FAST, proposed by Rosten \& Drummond \cite{10.1007/11744023_34} is a keypoint detector developed with real-time applications in mind. It has thus, as the name suggest, good speed performance. However, the problem with FAST is that there is no orientation component. This is the first thing added by Rublee et al. (2011) \cite{6126544}.
+
+To detect if pixel $p$ is a corner, a circle of $x$ pixels around $p$ is considered. In ORB, $r$ equals 9, which is called FAST-9. To decide if $p$ is a corner, FAST uses a threshold value $t$. If at least $n$
