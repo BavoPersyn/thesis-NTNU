@@ -12,7 +12,14 @@ These last two additional features are a nice addition to the primal goals, but 
 \section{Sequencer}
 First, we need a way to step through the footage of the race car efficiently. For this purpose, a sequencer is built, this sequencer takes footage from a camera mounted to a racing car. The footage from the camera is a video, to process this, each frame of the video is stored as a separate image. These images can be fed to the sequencer to display them. The sequencer stores a predefined amount of images in a buffer and displays the first image in the buffer. With specific keys, it is possible to go forwards and backwards through the sequence. When advancing through the sequence, the next image is displayed and a new image is loaded in the buffer. This buffer works in FIFO style, Going backwards through the buffer is analogous. It is also possible to jump multiple frames ahead/backwards. The buffer is then cleared and filled with the correct images. With a press of the space bar, the sequence continuously shows the next image like a video.
 
+Figure \autoref{fig:scheme} shows an overview of the different steps the sequencer goes through. The original images are loaded one by one in a FIFO buffer. Each step, frame N and N-1 are sent to be processed. This process calculates the Homography \underline{${H}$}. 
 
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/scheme.png}
+    \caption{Scheme of sequencer}
+    \label{fig:scheme}
+\end{figure}
 
 \section{Preprocessing}
 \subsection{Grayscale or color}
@@ -41,7 +48,7 @@ The car itself is not moving relative to the camera, as the camera is fixed to t
 \end{figure}
 
 \section{Frame-to-frame motion of the car}
-We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix ${R}$, translation vector $\vec{t}$ and normal vector $\vec{n}$ must be calculated. These can be calculated using keypoints in the frames. 
+We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix \underline{${R}$}, translation vector $\vec{t}$ and normal vector $\vec{n}$ must be calculated. These can be calculated using keypoints in the frames. 
 
 \subsection{What are keypoints}
 Keypoints are points in an image that carry a lot of information. If you were to take the point out of the image, it would be easy to recognise where the point is located in the image. To illustrate this, look at figure \autoref{fig:features}, this shows an image with 3 sections cut out. If you had to search for the place section C was cut out, it would be impossible as it could be almost anywhere. Section B is easier to locate, but you could move the cut horizontally without affecting the cut. Moving it vertically (along the gradient) the cut would change. Section A is the easiest to locate. There is no doubt as to where the cut is taken. Moving in either horizontal and vertical direction affects the cut.\bigskip
