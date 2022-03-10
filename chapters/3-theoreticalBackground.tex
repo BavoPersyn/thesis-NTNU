@@ -28,6 +28,7 @@ To detect if pixel $p$ is a corner, the pixels on circle with radius $r$ around 
     \centering
     \includegraphics[width=1\textwidth]{figures/fast_circle.jpg}
     \caption{Fast with radius 3}
+    \captionsource{Source: }{\cite{10.1007/11744023_34}}
     \label{fig:fastcircle}
 \end{figure}
 
@@ -68,4 +69,45 @@ with $\boldsymbol{p}(\boldsymbol{x})$ the pixel intensity in a smoothed version 
     f_n(\boldsymbol{p}) := \sum_{1\leq i\leq n} 2^{i-1}\tau(\boldsymbol{p};\boldsymbol{x},\boldsymbol{y}) .
 \end{equation}
 
-relying on the experiments of \cite{10.1007/978-3-642-15561-1_56}, ORB will use $n = 256$, a Gaussian distribution around the center of the patch and smooth the image using an integral image where each test point is a $5 \times 5$ subwindow of a $31 \times 31$ pixel patch. Based on experimental results in \cite{10.1007/978-3-642-15561-1_56} and their own these showed to be performing well.
+Relying on the experiments of \cite{10.1007/978-3-642-15561-1_56}, ORB will use $n = 256$, a Gaussian distribution around the center of the patch and smooth the image using an integral image where each test point is a $5 \times 5$ subwindow of a $31 \times 31$ pixel patch. Based on experimental results in \cite{10.1007/978-3-642-15561-1_56} and their own these showed to be performing well.
+
+\subsubsection{Steered BRIEF}
+As stated before, BRIEF is not robust when it comes to in-plane rotations. Even small rotations over a few degrees drops the amount of inliers significantly \cite{6126544}. ORB tackles this problem by introducing Steered BRIEF which steers the BRIEF descriptor according to the orientation of the keypoint. \bigskip
+
+To get to the steered BRIEF operator, a $2\times n$ matrix is defined as follows:
+\begin{equation}
+    S = \begin{pmatrix}
+    x_1,...,x_n \\
+    y_1,...,y_n
+    \end{pmatrix}
+\end{equation}
+
+The steered version $S_\theta$ of $S$ is constructed using the rotation matrix $R_\theta$, $\theta$ being the orientation of the patch:
+\begin{equation}
+    S_\theta = R_\theta S
+\end{equation}
+The steered BRIEF operator is now
+\begin{equation}
+    g_n(\boldsymbol{p},\theta):=f_n(\boldsymbol{p})\mid(x_i,y_i)\in S_\theta
+\end{equation}
+
+A lookup table is constructed for values of $\theta = 2k\pi/30, k \in \mathbb{N}_0$. If the keypoint orientation $\theta$ is consistent across views, the correct set of points $S_\theta$ will be used to compute the descriptor.
+
+\subsubsection{rBRIEF}
+However, the benefit of rotational invariance comes at a price. \cite{6126544} noticed a loss of variance and high correlation among the binary tests. To cope with these shortcomings, they developed a learning method to choose a good subset of binary tests. The goal is to have high variance and means close to 0.5, as well as being uncorrelated. To do this, they look at all binary tests.\bigskip
+
+\cite{6126544} proposes the following greedy algorithm to get a set of uncorrelated tests with a mean close to 0.5:
+\begin{enumerate}
+    \item Run each test  against all training patches.\smallskip
+    \item Order the tests by their distance from a mean of 0.5, forming the vector T.\smallskip
+    \item Greedy search:\smallskip
+    \begin{enumerate}
+        \item Put the first test into the result vector R and remove it from T.\smallskip
+        \item Take the next test from T, and compare it against all tests in R. If its absolute correlation is greater than a threshold, discard it; else add it to R.\smallskip
+        \item Repeat the previous step until there are 256 tests in R. If there are fewer than 256, raise the threshold and try again.\smallskip
+    \end{enumerate}
+\end{enumerate}
+
+They showed that this is a good method to ensure high diversity and low correlation.\bigskip
+
+Rublee et al.\cite{6126544} is the perfect paper for a more detailed explanation of ORB, along with an evaluation and comparison with SURF and SIFT.
