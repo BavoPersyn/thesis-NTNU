@@ -112,5 +112,120 @@ They showed that this is a good method to ensure high diversity and low correlat
 
 Rublee et al.\cite{6126544} is the perfect paper for a more detailed explanation of ORB, along with an evaluation and comparison with SURF and SIFT. 
 
-\section{Visual Odometry}
-Visual Odometry (VO) is a process that calculates the motion (rotation and translation) of a body based on the images of a single or multiple cameras attached to the body. 
+% \section{Visual Odometry}
+% Visual Odometry (VO) is a process that calculates the motion (rotation and translation) of a body based on the images of a single or multiple cameras attached to the body. There are multiple ways to achieve this. 
+
+\section{Motion estimation}
+Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint $\boldsymbol{X} = [X_1, X_2, X_3]^T$ that has been matched to keypoint $\boldsymbol{X'} = [X_1', X_2', X_3']^T$. The movement of this keypoint can be described as follows: 
+
+\begin{equation} \label{eq:1}
+    \begin{pmatrix}
+        X_1' \\
+        X_2' \\
+        X_3'
+    \end{pmatrix}
+    = \boldsymbol{R}
+    \begin{pmatrix}
+        X_1 \\
+        X_2 \\
+        X_3
+    \end{pmatrix}
+    + \boldsymbol{T}
+\end{equation}
+where $\boldsymbol{R}$ is a $3 \times 3$ matrix describing the rotation and $\boldsymbol{T}$ a vector describing the translation. Also valid is this: 
+\begin{equation}
+    \begin{pmatrix}
+        X_1' \\
+        X_2' \\
+        X_3'
+    \end{pmatrix}
+    = \boldsymbol{H}
+    \begin{pmatrix}
+        X_1 \\
+        X_2 \\
+        X_3
+    \end{pmatrix}.
+\end{equation} 
+
+So it is clear that there is a relation between \boldsymbol{H} on the one hand and $\boldsymbol{R}$ and $\boldsymbol{T}$ on the other hand.\bigskip
+
+\subsection{Essential matrix}
+OpenCV has a method \textit{findHomography} to find this Homography based on the keypoints detected and matched. We need to use this homography to compute rotation-matrix $\boldsymbol{R}$ and translation-vector $\boldsymbol{T}$. In \cite{improc} T. S. Huang proposed that with at least eight keypoint matches a two-step linear algorithm can be developed. To do this, intermediate values called essential parameters need to be estimated first. These essential parameters form a matrix $\boldsymbol{E}$ called the essential matrix:
+\begin{equation}
+    \boldsymbol{E} = 
+    \begin{pmatrix}
+        e_1&e_2&e_3 \\
+        e_4&e_5&e_6 \\
+        e_7&e_8&e_9 
+    \end{pmatrix}
+    = \begin{pmatrix}
+        0&-T_3&T_2 \\
+        T_3&0&-T_1 \\
+        -T_2&T_1&0
+    \end{pmatrix}
+     \boldsymbol{R}
+\end{equation}
+
+These nine essential elements are not all independent due to the fact that  $\boldsymbol{E}$ is a product of a skew-symmetric matrix and a rotation matrix.\bigskip
+
+\cite{tekalp} states that vectors $\boldsymbol{X'}$, $\boldsymbol{T}$ and $\boldsymbol{RX}$ are coplanar, since $\boldsymbol{X'} = \boldsymbol{RX} + \boldsymbol{T}$ from (\ref{eq:1}). So now we have 
+\begin{equation}
+    \boldsymbol{X} \cdot (\boldsymbol{T} \times \boldsymbol{RX}) = 0
+\end{equation}
+because $(\boldsymbol{T} \times \boldsymbol{RX}$ is orthogonal to this plane. From this, it follows that 
+\begin{equation} \label{eq:2}
+    \boldsymbol{X'^TEX} = 0
+\end{equation}
+
+We want to obtain a relationship in terms of the image plane coordinates. To do this, we divide both sides of \ref{eq:2} by $X_3 X'_3$:
+\begin{equation} \label{eq:essential}
+    \begin{pmatrix}
+        x_1'&x_2&1
+    \end{pmatrix}
+    \boldsymbol{E}
+    \begin{pmatrix}
+        x1 \\
+        x2 \\
+        1
+    \end{pmatrix}
+    = 0
+\end{equation}
+
+This linear homogeneous equation, in terms of the nine essential parameters, has either no solution or infinitely many solutions. By setting one of these nine essential parameters to one in the equation above, we can solve it for the remaining eight essential parameters. The essential parameter set to one is used as a scale factor. It's important to note that because of scale ambiguity in perspective projection, translation can only be estimated up to a scale factor.
+
+\subsection{Estimation of the Essential Parameters}
+To estimate these essential parameters, \cite{tekalp} proposes three methods: a linear lest squares method, an optimisation method requiring at least eight keypoint matches and a nonlinear method where only five, six or seven keypoint matches are needed. We'll discuss the Linear Least Squares Method.\bigskip
+
+As stated before, one of the essential parameters will be set to one. Take $e_9 = 1$, then equation (\ref{eq:essential}) can be written as:
+\begin{equation}
+    \begin{pmatrix}
+        x_1'x_1 &
+        x_1'x_2 &
+        x_1' &
+        x_2'x_1 &
+        x_2'x_2 &
+        x_2' &
+        x_1 &
+        x_2
+    \end{pmatrix}
+    \begin{pmatrix}
+        e1 \\
+        e2 \\
+        e3 \\
+        e4 \\
+        e5 \\
+        e6 \\
+        e7 \\
+        e8 \\
+    \end{pmatrix}
+    = -1
+\end{equation}
+
+This linear equation in eight essential parameters can be set up as a system of $N$ linear equations in 8 unknowns. To solve this, we need at least $N \geq 8$ keypoint matches. The solution of this equation gives the essential matrix $\boldsymbol{E}$ up to a scale factor (as discussed before). We took $e_9$ as the scale factor, but all of the other essential parameters could have been chosen as well. When using this method, $e_i, i = 1,...,9$ will be chosen based on the condition number, the $e_i$ that yields the smallest condition number will be chosen as scale factor.
+
+To have a solution for this equation, the coefficient matrix needs to have full rank, \cite{tekalp} states that this is the case if $\boldsymbol{T} \neq 0$ and the shape of the 3-D surface satisfies certain conditions, called the surface constraint.
+
+Other methods to estimate the essential parameters can be found in \cite{tekalp}.
+
+\subsection{Decomposition of the Essential Matrix}
+Now that we have the essential parameters that make up the essential matrix $\boldsymbol{E}$, we can use this to compute rotation matrix $\boldsymbol{R}$ and translation vector $\boldsymbol{T}$.

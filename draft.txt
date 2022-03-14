@@ -1,0 +1,3 @@
+T. S. Huang, “Determining three-dimensional motion and structure from
+two perspective views,” Chp. 14 in Handbook of Putt. Recog. and Image
+Proc., Academic Press, 1986.
