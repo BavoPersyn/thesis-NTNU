@@ -1,3 +1,5 @@
+import math
+
 import cv2
 import collections
 import os
@@ -5,6 +7,7 @@ import video_to_images
 import os.path
 from os import path
 import numpy as np
+import random as rand
 
 
 class Sequencer:
@@ -22,7 +25,7 @@ class Sequencer:
         self.mask = None
         self.black = None
         self.color = 0
-        self.orb = cv2.ORB_create(100)
+        self.orb = cv2.ORB_create(200)
         self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
         for base, dirs, files in os.walk('./Videos'):
             for directories in dirs:
@@ -115,8 +118,10 @@ class Sequencer:
                 eof = self.add_next_image(sequence, index)
                 if eof:
                     continue
-                cv2.imshow(title, self.imageFifo[0])
-                self.detect_and_match()
+                # cv2.imshow(title, self.imageFifo[0])
+                points = self.detect_and_match()
+                out = self.show_image(points, self.imageFifo[0])
+                cv2.imshow(title, out)
                 index += 1
             elif key == ord('p'):
                 if index <= 0:
@@ -128,7 +133,9 @@ class Sequencer:
                     + '.jpg')
                 self.imageFifo.appendleft(self.process_image(self.buffer))
                 cv2.imshow(title, self.imageFifo[0])
-                self.detect_and_match()
+                points = self.detect_and_match()
+                out = self.show_image(points, self.imageFifo[0])
+                cv2.imshow(title, out)
                 index -= 1
             elif key == ord('j'):
                 jump = input("How many frames do you want to jump? ")
@@ -143,8 +150,9 @@ class Sequencer:
                 index += jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                cv2.imshow(title, self.imageFifo[0])
-                self.detect_and_match()
+                points = self.detect_and_match()
+                out = self.show_image(points, self.imageFifo[0])
+                cv2.imshow(title, out)
             elif key == ord('b'):
                 jump = input("How many frames do you want to jump backwards? ")
                 while not jump.isnumeric():
@@ -157,20 +165,22 @@ class Sequencer:
                 index -= jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                cv2.imshow(title, self.imageFifo[0])
-                self.detect_and_match()
+                points = self.detect_and_match()
+                out = self.show_image(points, self.imageFifo[0])
+                cv2.imshow(title, out)
             elif key == ord(' '):
                 key = None
                 # cv2.setWindowTitle(title, title + ' playing.')
                 while not key == ord(' ') and not eof:
                     eof = self.add_next_image(sequence, index)
-                    cv2.imshow(title, self.imageFifo[0])
-                    self.detect_and_match()
+                    points = self.detect_and_match()
+                    out = self.show_image(points, self.imageFifo[0])
+                    cv2.imshow(title, out)
                     index += 1
                     key = cv2.waitKey(1)
             elif key == ord('q'):
                 eof = True
-            else:
+            else:s
                 continue
         cv2.destroyAllWindows()
         return
@@ -203,7 +213,7 @@ class Sequencer:
             p1 = (int(kp1[match.queryIdx].pt[0]), int(kp1[match.queryIdx].pt[1]))
             p2 = (int(kp1[match.trainIdx].pt[0]), int(kp1[match.trainIdx].pt[1]))
             if (self.mask[p1[1]][p1[0]] == [0, 0, 0]).all() or (self.mask[p2[1]][p2[0]] == [0, 0, 0]).all():
-                # at leas one of the keypoints is part of the ego-car, this match will be ignored
+                # at least one of the keypoints is part of the ego-car, this match will be ignored
                 continue
             good_matches.append(match)
             points1[j, :] = kp1[match.queryIdx].pt
@@ -217,10 +227,11 @@ class Sequencer:
             h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
             print("Estimated homography : \n", h)
         # show the best 20 matches
-        out = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:20], None)
-        out = cv2.pyrDown(out)
-        cv2.imshow("Matches", out)
-        # cv2.waitKey(0)
+        # out = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:20], None)
+        # out = cv2.pyrDown(out)
+        # cv2.imshow("Matches", out)
+
+        return [points1, points2]
 
     def process_image(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -228,3 +239,16 @@ class Sequencer:
         # image = cv2.circle(image, self.principal_point, radius=5, color=(255, 0, 0), thickness=3)
         image = image[self.horizon:self.height, 0:self.width]
         return image
+
+    def show_image(self, points, image):
+        img = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        # Show only the first 20, these are the best matches, bad matches make it unclear
+        for i in range(len(points[0][:20])):
+            point1 = (int(points[0][i][0]), int(points[0][i][1]))
+            point2 = (int(points[1][i][0]), int(points[1][i][1]))
+            # print(point1[0] - point2[0] + point1[1] - point2[1])
+            color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+            img = cv2.circle(img, point1, radius=3, color=color, thickness=1)
+            img = cv2.circle(img, point2, radius=3, color=color, thickness=1)
+            img = cv2.line(img, point1, point2, color=color, thickness=1)
+        return img
