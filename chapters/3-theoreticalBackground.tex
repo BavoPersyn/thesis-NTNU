@@ -228,4 +228,74 @@ To have a solution for this equation, the coefficient matrix needs to have full 
 Other methods to estimate the essential parameters can be found in \cite{tekalp}.
 
 \subsection{Decomposition of the Essential Matrix}
-Now that we have the essential parameters that make up the essential matrix $\boldsymbol{E}$, we can use this to compute rotation matrix $\boldsymbol{R}$ and translation vector $\boldsymbol{T}$.
+Now that we have the essential parameters that make up the essential matrix $\boldsymbol{E}$, we can use this to compute rotation matrix $\boldsymbol{R}$ and translation vector $\boldsymbol{T}$. To do this, we rewrite $\boldsymbol{E}$ as 
+
+\begin{equation} \label{eq:essential}
+    \boldsymbol{E} = 
+    \begin{pmatrix}
+        e1 \mid e2 \mid e3
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        k \boldsymbol{\hat{T}} \times \boldsymbol{r_1} \mid
+        k \boldsymbol{\hat{T}} \times \boldsymbol{r_2} \mid
+        k \boldsymbol{\hat{T}} \times \boldsymbol{r_3} 
+    \end{pmatrix}
+\end{equation}
+
+with $\boldsymbol{r_i}, i = 1, 2, 3$ are the columns of rotation matrix $\boldsymbol{R}$, $\boldsymbol{\hat{T}}$ and $k$ are the unit vector along and the length of $\boldsymbol{T}$ respectively. \cite{tekalp} proposes a method to calculate $\boldsymbol{R}$ and  $\boldsymbol{\hat{T}}$ from noise-free as well as a method for noisy point correspondence data. As we strive to have noise-free data, we'll discuss only the first method. For the full step by step mathematical explanation, we refer to \cite{tekalp}. Here we will limit ourselves to the essential steps.\bigskip
+
+By looking at \autoref{eq:essential}, it is clear that each column of $\boldsymbol{E}$ is orthogonal to $\boldsymbol{T}$. By taking the cross product of two of the three columns, the unit vector along $\boldsymbol{T}$ can be calculated:
+\begin{equation}
+    \boldsymbol{\hat{T}} = \pm \frac{\boldsymbol{e_i \times e_j}}{\mid\mid e_i \times e_j\mid\mid}
+    \quad i \neq j
+\end{equation}
+
+The sign of the unit vector can't be calculated with the equation above. Zhuang \cite{ZHUANG1989175} proposed the following to do so:
+\begin{equation}
+    \sum\begin{pmatrix}
+        \boldsymbol{\hat{T}} \times \begin{pmatrix}
+            x_1' & x_2' & 1
+        \end{pmatrix}^T
+    \end{pmatrix}^T
+    \cdot \boldsymbol{E}\begin{pmatrix}
+        x_1 & x_2 & 1
+    \end{pmatrix}^T
+    > 0
+\end{equation}
+the summation is taken over all observed keypoint matches.\bigskip
+
+T. S. Huang \cite{improc} showed that 
+\begin{equation}
+    k^2 = \frac{1}{2}(\boldsymbol{e_1}\cdot\boldsymbol{e_1} + \boldsymbol{e_2}\cdot\boldsymbol{e_2} + \boldsymbol{e_3}\cdot\boldsymbol{e_3})
+\end{equation}
+Calculating $k$ this way doesn't solve the problem we had with the scale as $\boldsymbol{e_3}$ contains an arbitrary parameter but to determine the rotation parameters, we need this value for $k$.\bigskip
+
+To calculate $\boldsymbol{r_1}$ we first calculate $\boldsymbol{e_2 \times e_3}$:
+\begin{align*}
+    \boldsymbol{e_2} \times \boldsymbol{e_3} = [(k\boldsymbol{\hat{T}}\times \boldsymbol{r_2})\cdot\boldsymbol{r_3}]k\boldsymbol{\hat{T}} - [(k \boldsymbol{\hat{T}} \times \boldsymbol{r_2})k \boldsymbol{\hat{T}}]\boldsymbol{r_3}
+\end{align*}
+The first term can be simplified as 
+\begin{align}
+    [(\boldsymbol{r_2}\times\boldsymbol{r_3})\cdot k\boldsymbol{\hat{T}}]k\boldsymbol{\hat{T}} = (\boldsymbol{r_1}\cdot k\boldsymbol{\hat{T}})k\boldsymbol{\hat{T}}
+\end{align}
+because $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\boldsymbol{r_3}$ are mutually orthogonal and have unity length. Since $(k\boldsymbol{\hat{T}}\times\boldsymbol{r_2})$ is orthogonal to $k\boldsymbol{\hat{T}}$, the second term is zero. So we have the following equations (\autoref{eq:r2} and \autoref{eq:r3} can be calculated in an analogous way):
+\begin{equation}
+    \boldsymbol{e_2} \times \boldsymbol{e_3} = k\boldsymbol{\hat{T}}(k\boldsymbol{\hat{T}}\cdot\boldsymbol{r_1})
+\end{equation}
+\begin{equation}\label{eq:r2}
+    \boldsymbol{e_3} \times \boldsymbol{e_1} = k\boldsymbol{\hat{T}}(k\boldsymbol{\hat{T}}\cdot\boldsymbol{r_2})
+\end{equation}
+\begin{equation}\label{eq:r3}
+    \boldsymbol{e_1} \times \boldsymbol{e_2} = k\boldsymbol{\hat{T}}(k\boldsymbol{\hat{T}}\cdot\boldsymbol{r_3})
+\end{equation}
+
+By solving these equations to $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\boldsymbol{r_3}$ we get the following equations:
+\begin{equation}
+    \boldsymbol{r_1} = \biggl[\frac{1}{k^2}\boldsymbol{\hat{T}}\cdot(\boldsymbol{e_2}\times\boldsymbol{e_3})\biggr]\boldsymbol{\hat{T}}+\frac{1}{k}(\boldsymbol{e_1}\times\boldsymbol{\hat{T}})
+\end{equation}
+\begin{equation}
+    \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\boldsymbol{\hat{T}}\cdot(\boldsymbol{e_3}\times\boldsymbol{e_1})\biggr]\boldsymbol{\hat{T}}+\frac{1}{k}(\boldsymbol{e_2}\times\boldsymbol{\hat{T}})
+\end{equation}
+\begin{equation}
+    \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\boldsymbol{\hat{T}}\cdot(\boldsymbol{e_1}\times\boldsymbol{e_2})\biggr]\boldsymbol{\hat{T}}+\frac{1}{k}(\boldsymbol{e_3}\times\boldsymbol{\hat{T}})
+\end{equation}
