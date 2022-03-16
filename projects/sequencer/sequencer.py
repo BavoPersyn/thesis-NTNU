@@ -15,6 +15,7 @@ class Sequencer:
     BUFSIZ = 2
 
     def __init__(self):
+        self.y2 = 0
         self.buffer = None
         self.principal_point = None
         self.horizon = None
@@ -25,7 +26,10 @@ class Sequencer:
         self.mask = None
         self.black = None
         self.color = 0
-        self.orb = cv2.ORB_create(200)
+        self.orb = cv2.ORB_create(2000)
+        self.a = 0
+        self.b = 0
+        self.c = 0
         self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
         for base, dirs, files in os.walk('./Videos'):
             for directories in dirs:
@@ -180,7 +184,7 @@ class Sequencer:
                     key = cv2.waitKey(1)
             elif key == ord('q'):
                 eof = True
-            else:s
+            else:
                 continue
         cv2.destroyAllWindows()
         return
@@ -194,6 +198,10 @@ class Sequencer:
         self.frames = int(info.readline().split(' ')[-1])
         self.horizon = int(info.readline().split(' ')[-1])
         self.principal_point = (int(self.width / 2), int(self.height / 2))
+        self.y2 = int(info.readline().split(' ')[-1])
+        self.a = self. horizon - self.y2
+        self.b = self.width
+        self.c = 0
 
     def detect_and_match(self):
         # convert images in buffer to grayscale
@@ -210,10 +218,14 @@ class Sequencer:
         good_matches = []
         j = 0
         for match in matches:
+
             p1 = (int(kp1[match.queryIdx].pt[0]), int(kp1[match.queryIdx].pt[1]))
-            p2 = (int(kp1[match.trainIdx].pt[0]), int(kp1[match.trainIdx].pt[1]))
-            if (self.mask[p1[1]][p1[0]] == [0, 0, 0]).all() or (self.mask[p2[1]][p2[0]] == [0, 0, 0]).all():
-                # at least one of the keypoints is part of the ego-car, this match will be ignored
+            p2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
+            # Check if point is part of ego-car or above the horizon
+            in_mask = (self.mask[p1[1]][p1[0]] == [0, 0, 0]).all() or (self.mask[p2[1]][p2[0]] == [0, 0, 0]).all()
+            above = (self.a * p1[0] + self.b * p1[1] + self.c) < 0 or (self.a * p2[0] + self.b * p2[1] + self.c) < 0
+            if in_mask or above:
+                # at least one of the keypoints is part of the ego-car or above the horizon, this match will be ignored
                 continue
             good_matches.append(match)
             points1[j, :] = kp1[match.queryIdx].pt
@@ -225,7 +237,7 @@ class Sequencer:
             print("Not enough points to calculate Homography.")
         else:
             h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-            print("Estimated homography : \n", h)
+            # print("Estimated homography : \n", h)
         # show the best 20 matches
         # out = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:20], None)
         # out = cv2.pyrDown(out)
@@ -241,14 +253,20 @@ class Sequencer:
         return image
 
     def show_image(self, points, image):
-        img = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        img = self.reduce_contrast(image)
+        # converted to BGR so keypoints can be shown in color
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         # Show only the first 20, these are the best matches, bad matches make it unclear
-        for i in range(len(points[0][:20])):
+        for i in range(len(points[0])):
             point1 = (int(points[0][i][0]), int(points[0][i][1]))
             point2 = (int(points[1][i][0]), int(points[1][i][1]))
-            # print(point1[0] - point2[0] + point1[1] - point2[1])
             color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-            img = cv2.circle(img, point1, radius=3, color=color, thickness=1)
-            img = cv2.circle(img, point2, radius=3, color=color, thickness=1)
+            img = cv2.circle(img, point1, radius=3, color=color, thickness=2)
+            img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
             img = cv2.line(img, point1, point2, color=color, thickness=1)
         return img
+
+    def reduce_contrast(self, image):
+        mapper = np.vectorize(lambda x: (x * 127) // 255 + 128)
+        image = mapper(image).astype(np.uint8)
+        return image
