@@ -298,4 +298,110 @@ By solving these equations to $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\bolds
 \end{equation}
 \begin{equation}
     \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\boldsymbol{\hat{T}}\cdot(\boldsymbol{e_1}\times\boldsymbol{e_2})\biggr]\boldsymbol{\hat{T}}+\frac{1}{k}(\boldsymbol{e_3}\times\boldsymbol{\hat{T}})
+\end{equation}\bigskip
+
+\subsection{Homography}
+
+However, the use of essential matrix $\boldsymbol{E}$ is too general. When all keypoints lie on a planar surface, we can treat it differently and us Homography $\boldsymbol{H}$. As we only look at the points below the horizon, all keypoints lie on a plane that can be described as
+\begin{equation}
+    aX_1 + bX_2 + cX_3 = 1
 \end{equation}
+where $(a, b, c)^T$ is the normal vector of this plane. \autoref{eq:1} can then be rewritten as 
+\begin{equation}
+    \begin{pmatrix}
+        X_1' \\
+        X_2' \\
+        X_3'
+    \end{pmatrix} = \boldsymbol{R}
+    \begin{pmatrix}
+        X_1 \\
+        X_2 \\
+        X_3
+    \end{pmatrix} + \boldsymbol{T}
+    \begin{pmatrix}
+        a & b & c
+    \end{pmatrix}
+    \begin{pmatrix}
+        X_1 \\
+        X_2 \\
+        X_3
+    \end{pmatrix}
+\end{equation}
+or
+\begin{equation}
+    \begin{pmatrix}
+        X_1' \\
+        X_2' \\
+        X_3'
+    \end{pmatrix} =
+    \begin{pmatrix}
+        a_1 & a_2 & a_3 \\
+        a_4 & a_5 & a_6 \\
+        a_7 & a_8 & a_9 \\
+    \end{pmatrix}
+    \begin{pmatrix}
+        X_1 \\
+        X_2 \\
+        X_3
+    \end{pmatrix} = \boldsymbol{A}
+    \begin{pmatrix}
+        X_1 \\
+        X_2 \\
+        X_3
+    \end{pmatrix}
+\end{equation}
+with
+\begin{equation} \label{eq:matrixA}
+    \boldsymbol{A} = \boldsymbol{R} + \boldsymbol{T}
+    \begin{pmatrix}
+        a & b & c
+    \end{pmatrix}
+\end{equation}
+
+$a_1,...,a_9$ are called the pure parameters \cite{506592e3b5484e57928e215df49a83cb}. As with the computation of the essential parameters, the scale ambiguity problem is also present here so we normalise $a_9 = 1$. The 3-D displacement is projected onto a 2-D plane using the perspective transformation. The mapping of 3-D displacement $t$ to 2-D image plane $t'$ is given by 
+\begin{equation*}
+    x_1' = \frac{a_1x_1 + a_2x_2 + a_3}{a_7x_1 + a_8x_2 + 1}
+\end{equation*}
+\begin{equation}\label{eq:pure}
+     x_2' = \frac{a_4x_1 + a_5x_2 + a_6}{a_7x_1 + a_8x_2 + 1}
+\end{equation}
+
+\subsection{Estimation of the pure parameters}
+\autoref{eq:pure} can be rearranged by cross-multiplying the equations for each keypoint match:
+\begin{equation}
+    \begin{pmatrix}
+        x_1 & x_2 & 1 & 0 & 0 & 0 & -x_1x_1' & -x_2x_1' \\
+        0 & 0 & 0 & x_1 & x_2 & 1 & -x_1x_2' & -x_2x_2'
+    \end{pmatrix}
+    \begin{pmatrix}
+        a_1 \\ a_2 \\ a_3 \\ a_4 \\ a_5 \\ a_6 \\ a_7 \\ a_8 \\
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        x_1' \\ x_2'
+    \end{pmatrix}
+\end{equation}
+So if we have at least four keypoint matches, eight or more linear equations can be set up to solve for the pure parameters. \cite{improc} showed that the rank of the matrix is 8 if and only if no three of the four observed points are collinear in three dimensions.
+
+\subsection{Estimation of the motion and structure parameters}
+We now have found the pure parameters and thus matrix $\boldsymbol{A}$. As \autoref{eq:matrixA} states, motion parameters $\boldsymbol{R}$ and $\boldsymbol{T}$ can be derived from $\boldsymbol{A}$, as well as the normal vector $(a,b,c)^T$. To do this, we need to decompose $\boldsymbol{A}$ using singular value decomposition (SVD). \cite{Huang:86} describes describes a method to do this:
+
+First of all, we write matrix $\boldsymbol{A}$ as 
+\begin{equation}
+    \boldsymbol{A} = \boldsymbol{U}
+    \begin{pmatrix}
+        \lambda_1 & 0 & 0 \\
+        0 & \lambda_2 & 0 \\
+        0 & 0 & \lambda_3
+    \end{pmatrix}\boldsymbol{V}^T
+\end{equation}
+
+where $\boldsymbol{U} = (\boldsymbol{u_1}\mid\boldsymbol{u_2}\mid\boldsymbol{u_3})$ and $\boldsymbol{V} = (\boldsymbol{v_1}\mid\boldsymbol{v_2}\mid\boldsymbol{v_3})$ are $3\times 3$ orthogonal matrices and $\lambda_1\geq\lambda_2\geq\lambda_3\geq 0$ are the singular values of $\boldsymbol{A}$. Depending on the multiplicity of the singular values there are 3 different cases.
+
+\subsubsection{Multiplicity of singular values is 1: $\lambda_1 > \lambda_2 > \lambda_3$}
+
+This indicates that the motion can be decomposed into a rotation around an axis through the origin and a translation in a direction, not along the normal vector.
+
+\subsubsection{Multiplicity of singular values is 2: $\lambda_1 = \lambda_2 \neq \lambda_3$}
+
+\subsubsection{Multiplicity of singular values is 2: $\lambda_1 = \lambda_2 = \lambda_3$}
+
