@@ -29,10 +29,11 @@ For now, the images are converted to grayscale. The big advantage is that a gray
 
 However, in the footage we are using, the road is marked by colored cones. Most of the time the road is marked by yellow cones but sometimes there are blue cones on the road which means the car should slalom in between these cones. If at one point it should turn out the color of the cones is necessary, this will not be a problem. The newest image is always stored in the buffer in its original color, if we want to determine the color of the cone, this can easily be done by looking at the area where the cone is on the original image.
 
-\subsection{Removing redundant information}
+\subsection{Removing redundant information}\label{ssec:redundant}
 As said before, the images are converted to grayscale. Next to that, they are also cropped. We are only interested in what is going on below the horizon, everything above it will not give us much information. In the footage we are using, there is not much to be cropped, because the footage we have is from a camera that was mounted tilted. Now that the sky and everything above the horizon is cropped out, there is one part of converting left.
 
 \subsection{Masking out the ego-car}
+\label{ssec:egocar}
 The car itself is not moving relative to the camera, as the camera is fixed to the car, so it is irrelevant for the estimation of the movement. A mask is created to erase the car from the footage. This is only done when displaying the image however, otherwise the computation of keypoints would not work properly. When detecting the keypoints in the next step, keypoints laying in the area masked out by the ego-car, can be removed as keypoints. Figure \autoref{fig:input_image} shows an example of a frame before it is preprocessed. Figure \autoref{fig:output_image} shows the image after preprocessing. The black part is the masked out ego-car.
 
 \begin{figure}
@@ -76,3 +77,30 @@ ORB or Oriented FAST and Rotated BRIEF is, as the name suggests, a combination o
 
 One of the main advantages of ORB is the speed, according to Rublee et al. (2011) \cite{6126544} at two orders of magnitude faster than SIFT due to the fact that ORB is computationally more efficient. It is also more noise invariant and because of the speed useful in real-time applications.
 
+\subsection{Filtering keypoints}
+In \autoref{ssec:egocar} we already talked about the fact that keypoints part of the ego-car are considered noise as they are no part of the planar surface. But the keypoints are not the only keypoints that should be discarded. Everything above the horizon is not part of the planar surface either. In the future, we could try to detect the horizon and discard all keypoints above it, but for now we will do this manually.
+
+As stated before, the footage we have is from a camera that is mounted tilted. This means we are not able to simply discard all keypoints above a horizontal line. We describe the horizon as a linear equation of the form
+\begin{equation}\label{eq:linear}
+    ax + by + c = 0
+\end{equation}
+To find the values for $a$, $b$ and $c$ we need two points on the horizon $p_1 = (x_1, y_1)$ and $ p_2 = (x_2, y_2)$. \autoref{eq:linear} can then be rewritten in terms of $p_1$ and $p_2$ as follows:
+\begin{equation}
+    (y_1-y_2)x + (x_2-x_1)y + (x_1y_2-x_2y_1) = 0
+\end{equation}
+For now an estimation suffices so we chose two points empirically. In \autoref{ssec:redundant} we already chose a height to cut off redundant information, this height was chosen based on the horizon. For $p_1$ we take this height as $y_1$ and as the camera is tilted to the right this is the leftmost point and $x_1 = 0$. For $p_2$ we chose a point at the utmost right of the image so $x_2$ is equal to the width of the image. For $y_2$ we choose a value by simply looking what seems to be the best option. \bigskip
+
+\autoref{fig:key_orig} shows all keypoints detected without filtering out those above the horizon (keypoints on ego-car are already left out). \autoref{fig:key_filtered} shows what keypoints remain after filtering out those above the horizon. In both images, the horizon line is plotted to illustrate where our horizon lays.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/keypoint_orig.png}
+    \caption{Keypoints before filtering}
+    \label{fig:key_orig}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/keypoint_filtered.png}
+    \caption{Keypoints after filtering keypoints above the horizon}
+    \label{fig:key_filtered}
+\end{figure}

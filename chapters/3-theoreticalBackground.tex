@@ -399,9 +399,59 @@ where $\boldsymbol{U} = (\boldsymbol{u_1}\mid\boldsymbol{u_2}\mid\boldsymbol{u_3
 
 \subsubsection{Multiplicity of singular values is 1: $\lambda_1 > \lambda_2 > \lambda_3$}
 
-This indicates that the motion can be decomposed into a rotation around an axis through the origin and a translation in a direction, not along the normal vector.
+This indicates that the motion can be decomposed into a rotation around an axis through the origin and a translation in a direction, not along the normal vector. In this case, there are two possible solutions for the pure parameters:
+\begin{equation*}
+    \boldsymbol{R} = \boldsymbol{U}
+    \begin{pmatrix}
+        \alpha & 0 & \beta \\
+        0 & 1 & 0 \\
+        -s\beta & 0 & s\alpha
+    \end{pmatrix}
+    \boldsymbol{V}^T
+\end{equation*}
+\begin{equation*}
+    \boldsymbol{T} = k\biggl(-\beta\boldsymbol{u_1} + (\frac{\lambda_3}{\lambda_2}-s\alpha)\boldsymbol{u_3}\biggr)
+\end{equation*}
+\begin{equation*}
+    \begin{pmatrix}
+        a & b & c
+    \end{pmatrix}^T = \frac{1}{k}(\delta\boldsymbol{v_1} + \boldsymbol{v_3})
+\end{equation*}
+with
+\begin{equation*}
+    \alpha = \frac{\lambda_1 + s\lambda_3\delta^2}{\lambda_2(1+\delta^2)}
+\end{equation*}
+\begin{equation*}
+    \beta = \frac{1}{\delta}\biggl(\alpha-\frac{\lambda_1}{\lambda_2}\biggr)
+\end{equation*}
+\begin{equation*}
+    \delta = \pm\biggl(\frac{\lambda_1^2-\lambda_2^2}{\lambda_2^2-\lambda_3^2}\biggr)^\frac{1}{2}
+\end{equation*}
+\begin{equation*}
+    s = det(\boldsymbol{U}) det(\boldsymbol{V})
+\end{equation*}
+and $k$ is an arbitrary scale factor (either positive or negative). To resolve the scale ambiguity, $1/X_3 > 0$ is required for all points.
 
 \subsubsection{Multiplicity of singular values is 2: $\lambda_1 = \lambda_2 \neq \lambda_3$}
-
+This indicates that the motion can be decomposed into a rotation around an axis through the origin and a translation along the normal vector. Now a unique solution for the motion parameters exist:
+\begin{equation*}
+    \boldsymbol{R} = \frac{1}{\lambda_1}\boldsymbol{A}-\biggl(\frac{\lambda_3}{\lambda_1}-s\biggr)\boldsymbol{u_3}\boldsymbol{v_3^T}
+\end{equation*}
+\begin{equation*}
+    \boldsymbol{T} = k\biggl(\frac{\lambda_3}{\lambda_1}-s\biggr)
+\end{equation*}
+\begin{equation*}
+    \begin{pmatrix}
+        a & b & c
+    \end{pmatrix}^T = \frac{1}{k}\boldsymbol{v_3}
+\end{equation*}
+\begin{equation*}
+    s = det(\boldsymbol{U}) det(\boldsymbol{V})
+\end{equation*}
+Once again, $k$ is an arbitrary scale factor.
 \subsubsection{Multiplicity of singular values is 2: $\lambda_1 = \lambda_2 = \lambda_3$}
-
+This indicates the rotation is a pure rotation around an axis through the origin. Once again, there's a unique solution for the rotation matrix:
+\begin{equation*}
+    \boldsymbol{R} = (\frac{1}{\lambda_1})\boldsymbol{A}
+\end{equation*}
+In this case, it is not possible to determine translation vector $\boldsymbol{T}$ and the normal vector $(a, b, c)^T$ as there is not translation.
