@@ -1,0 +1,389 @@
+%=====================================================
+%
+%       BildMacros.tex
+%
+%======================================================
+%
+%  These are macros which are related to representing figures in LaTeX documents
+%  in a simple and standardized way.
+%   The explanation texts are still largely in German (sorry for that!),
+%   but will be translated as soon as possible.
+%
+%  Source: Rudolf Mester
+%=========================================================
+
+%---------------------------------------------------------------------------
+%Dependencies
+\usepackage{tcolorbox}
+
+%---------------------------------------------------------------------------
+%Variables
+\newlength{\CVGMBildEins}
+\newlength{\CVGMBildZwei}
+\newlength{\CVGMBildTotal}
+\newlength{\CVGMMinipageEins}
+\newlength{\CVGMMinipageZwei}
+
+%---------------------------------------------------------------------------
+%   SECTION 1:  commands for text mode
+%---------------------------------------------------------------------------
+%
+% ----- Bilder
+%
+% Mit den folgenden beiden Befehlen wird eingestellt, ob Breitenangaben in
+% den Bildbefehlen absolut (z.B. "7.5cm") oder relativ zur \linewidth
+% interpretiert werden (z.B. "0.3"; \linewidth wird automatisch erg\"{a}nzt).
+% Voreingestellt ist der absolute Modus.
+%
+% Selbstverst\"{a}ndlich ist es noch m\"{o}glich, im Absolutmodus durch Angabe
+% von \linewidth im Aufruf eine relative Angabe zu machen; durch die
+% automatische Erg\"{a}nzung ist es dagegen im Relativmodus nicht m\"{o}glich,
+% absolute Angaben zu machen; erst ist der Modus zu wechseln.
+%
+\newcommand{\absolutemeasures}{\gdef\cvgmode{}}
+\newcommand{\relativemeasures}{\gdef\cvgmode{\linewidth}}
+\absolutemeasures % default
+%
+% Grunds\"{a}tzliches:
+%
+% F\"{u}r 1 oder 2 Bilder gibt es je drei Befehle:
+%  - \(doppel)bild : Bild(er) mit Bildunterschrift(en) und Label
+%  - \(doppel)bildnocap : ohne Unterschriften, als Flie{\ss}objekt
+%  - \(doppel)bildnofloat : keine Unterschriften, kein Flie{\ss}objekt;
+%    Bilder "hier und jetzt" im Text, evtl. mit "underfull vbox"
+%    auf der n\"{a}chsten Seite ganz oben
+%
+% Zus\"{a}tzlich gibt es einen Befehl f\"{u}r zwei Bilder mit gemeinsamer
+% Bildunterschrift: \doppelbildonecap
+%
+% Weiterhin gibt es noch Makros f\"{u}r ein Bild mit Text daneben, und zwar
+% entweder links Bild und rechts Text oder umgekehrt.
+%
+%
+% Schalter:
+%
+% Es gibt zwei Schalter (boolean Variablen), die das Verhalten steuern:
+%  - \showfilenamestrue  bzw.  \showfilenamesfalse  gibt an, ob hinter
+%    der Bildunterschrift der Dateiname erscheinen soll. Dies kann f\"{u}r
+%    Debugging-Zwecke hilfreich sein.
+%  - \emptypicstrue  bzw.  \emptypicsfalse  dient dazu, noch nicht
+%    exitierende Zeichnungen schon einzubinden mit allen Referenzen.
+%    Der Dateiname erscheint in einem Kasten (H\"{o}he = 3/4 der angegebenen
+%    Bildbreite). Anstelle des Dateinamens kann auch eine kurze
+%    Bildbeschreibung angegeben werden, die dann anstelle des Dateinamens
+%    angezeigt wird. Beide Schalter gleichzeitig einzuschalten macht
+%    aber dann nat\"{u}rlich nicht mehr viel Sinn.
+%
+\newif\ifshowfilenames\showfilenamesfalse
+\def\showfilename#1{\ifshowfilenames\fbox{\textbf{ #1}}\fi}
+\newif\ifemptypics\emptypicsfalse
+\def\myincludegraphics#1#2{%
+    \ifemptypics%
+        \@tempdima=#2\cvgmode%
+        \fbox{\parbox[b][.75\@tempdima][c]{\@tempdima}{#1}}%
+    \else%
+        \if@noscale%
+	    \includegraphics{#1}%
+	\else%
+        \includegraphics[width=#2\cvgmode]{#1}%
+	\fi%
+    \fi%
+}
+\def\MYincludegraphics#1{%
+    \ifemptypics%
+        \fbox{\parbox[b][.75\linewidth][c]{\linewidth}{#1}}%
+    \else%
+        \if@noscale%
+        \includegraphics{#1}%
+	\else%
+        \includegraphics[width=\linewidth]{#1}%
+	\fi%
+    \fi%
+}
+
+\newcommand{\image}[4]
+{
+    \begin{figure}
+        \begin{center}
+            \myincludegraphics{#1}{#2}
+            \small\caption{\label{#4}#3\showfilename{#1}}
+        \end{center}
+    \end{figure}
+}
+
+%----------------- new command: \bildsc ------------------------------------
+%
+% Makro zum Anzeigen eines Bildes
+% \"{U}bergabeparameter (4): 1: Filename
+%                        2: Breite des Bildes
+%                        3: kurze Bildunterschrift (Abbildungsverz.)
+%                        3: Bildunterschrift
+%                        4: Label f\"{u}r Bild
+%
+\newcommand{\imagesc}[5]
+{
+  \begin{figure}
+      \begin{center}
+          \myincludegraphics{#1}{#2}
+          \small\caption[#3]{\label{#5}#4\showfilename{#1}}
+      \end{center}
+  \end{figure}
+}
+
+%----------------- new command: \bildnocap ---------------------------------
+%
+% Bild ohne Bildunterschrift (caption)
+% \"{U}bergabeparameter (2): 1: Filename
+%                        2: Breite des Bildes
+%
+\newcommand{\imagenocap}[2]{
+    \begin{figure}
+        \begin{center}
+            \myincludegraphics{#1}{#2}
+        \end{center}
+        \hspace{0pt plus 1fill}\showfilename{#1}\hspace{0pt plus 1fill}
+    \end{figure}
+}
+
+% das gleiche als nicht-Flie{\ss}objekt; logischerweise ohne Bildunterschrift
+\newcommand{\imagenofloat}[2]{
+    \begin{center}
+        \myincludegraphics{#1}{#2}
+    \end{center}
+    \hspace{0pt plus 1fill}\showfilename{#1}\hspace{0pt plus 1fill}
+}
+
+%----------------- new command: \doppelbild --------------------------------
+%Not working, no CVGMBILDEins, CVGMBILDZwei or CVGBILDTotal
+%
+% 2 Bilder nebeneinander
+% \"{U}bergabeparameter (8): 1: Filename erstes Bild
+%                        2: Breite des ersten Bildes
+%                        3: Bildunterschrift erstes Bild
+%                        4: Label f\"{u}r erstes Bild
+%                        5-8: genauso f\"{u}r zweites Bild
+%
+\newcommand{\doubleimage}[8]{
+    \if@noscale
+	      % Obtain and save the native width of each picture in the length definitions.
+	      \settowidth{\CVGMBildEins}{\MYincludegraphics{#1}}
+	      \settowidth{\CVGMBildZwei}{\MYincludegraphics{#1}}
+	      \setlength{\CVGMBildTotal}{\CVGMBildEins + \CVGMBildZwei}
+        \setlength{\CVGMMinipageEins}{\linewidth * \real{0.95} * \ratio{\CVGMBildEins}{\CVGMBildTotal}}
+	      \setlength{\CVGMMinipageZwei}{\linewidth * \real{0.95} * \ratio{\CVGMBildZwei}{\CVGMBildTotal}}        
+    \else
+	      \setlength{\CVGMMinipageEins}{#2\cvgmode}
+	      \setlength{\CVGMMinipageZwei}{#6\cvgmode}
+    \fi
+    \begin{figure}
+        \begin{center}
+            \begin{minipage}[t]{\CVGMMinipageEins}
+                \if@noscale
+                    \centering
+                \fi
+                \MYincludegraphics{#1}
+                \small\caption{\label{#4}#3\showfilename{#1}}
+            \end{minipage}
+            \hfill
+            \begin{minipage}[t]{\CVGMMinipageZwei}
+                \if@noscale
+                    \centering
+                \fi
+                \MYincludegraphics{#5}
+                \small\caption{\label{#8}#7\showfilename{#5}}
+            \end{minipage}
+        \end{center}
+    \end{figure}
+}
+
+%--------------------- new command: \dimage --------------------------------
+% Used as an image object for the double image functions below
+%
+% 1 Bild zur Verwendung mit dem \doppelbildparts Befehl
+% \"{U}bergabeparameter (4): 1: Filename Bild
+%                        2: Breite des Bildes
+%                        3: Bildunterschrift Bild
+%                        4: Label f\"{u}r Bild
+%
+
+\newcommand{\dimage}[4]{
+            \begin{minipage}[t]{#2\cvgmode}
+                \MYincludegraphics{#1}
+                \small\caption{\label{#4}#3\showfilename{#1}}
+            \end{minipage}
+}
+
+%--------------------- new command: \dbildsc ------------------------------
+%
+% 1 Bild zur Verwendung mit dem \doppelbildparts Befehl
+% \"{U}bergabeparameter (5): 1: Filename Bild
+%                        2: Breite des Bildes
+%                        3: kurze Bildunterschrift (Abbildungsverz.)
+%                        4: Bildunterschrift Bild
+%                        5: Label f\"{u}r Bild
+%
+\newcommand{\dimagesc}[5]{
+            \begin{minipage}[t]{#2\cvgmode}
+                \MYincludegraphics{#1}
+                \small\caption[#3]{\label{#5}#4\showfilename{#1}}
+            \end{minipage}
+}
+
+%----------------- new command: \doppelbild --------------------------------
+%
+% 2 Bilder nebeneinander
+% \"{U}bergabeparameter (2): 1: \dbild oder \dbildsc (linkes Bild)
+%                        2: ebenso (rechtes Bild)
+%
+\newcommand{\doubleimageparts}[2]{
+    \begin{figure}
+        \begin{center}
+            {#1}
+            \hfill
+            {#2}
+        \end{center}
+    \end{figure}
+}
+
+%----------------- new command: \doppelbildnocap ---------------------------
+%
+% 2 Bilder nebeneinander, ohne \"{U}berschrift
+% \"{U}bergabeparameter (4): 1: Filename erstes Bild
+%                        2: Breite des ersten Bildes
+%                        3-4: genauso f\"{u}r zweites Bild
+% Der Platz zwischen den beiden Bildern ist durch den Befehl
+% \doppelbildsep bestimmt.
+% default = \hfill, d.h. auf volle Breite gestreckt; ggf. umdefinieren,
+% z.B. mit \renewcommand{\doppelbildsep}{\hspace{.1\linewidth}}, dann
+% automatisch zentriert.
+\newcommand{\doppelbildsep}{\hfill}
+%
+\newcommand{\doubleimagenocap}[4]{
+    \begin{figure}
+        \begin{center}
+            \myincludegraphics{#1}{#2}%
+            \doppelbildsep%
+            \myincludegraphics{#3}{#4}%
+            \hspace{0pt plus 1fill}\showfilename{#1}%
+            \hspace{0pt plus 2fill}\showfilename{#3}\hspace{0pt plus 1fill}
+        \end{center}
+    \end{figure}
+}
+
+% das gleiche als nicht-Flie{\ss}objekt; logischerweise ohne Bildunterschriften
+%
+\newcommand{\doubleimagenofloat}[4]{
+    \begin{center}
+        \myincludegraphics{#1}{#2}
+        \doppelbildsep
+        \myincludegraphics{#3}{#4}
+    \end{center}
+    \hspace{0pt plus 1fill}\showfilename{#1}%
+    \hspace{0pt plus 2fill}\showfilename{#3}\hspace{0pt plus 1fill}
+}
+
+
+%----------------- new command: \doppelbildonecap -----------------------
+%
+% 2 Bilder nebeneinander, EINE Unterschrift
+% \"{U}bergabeparameter: 1: Filename erstes Bild
+%                    2: Breite des ersten Bildes
+%                    3: Filename des zweiten Bildes
+%                    4: Breite des zweiten Bildes
+%                    5: Bildunterschrift
+%                    6: Label
+%
+\newcommand{\doubleimageonecap}[6]{
+    \begin{figure}
+        \begin{center}
+            \myincludegraphics{#1}{#2}
+            \doppelbildsep
+            \myincludegraphics{#3}{#4}
+            \small\caption{\label{#6}#5\showfilename{#1}\showfilename{#3}}
+        \end{center}
+    \end{figure}
+}
+
+%----------------- new command: \doppelbildonecapsc -----------------------
+%
+% 2 Bilder nebeneinander, EINE Unterschrift
+% \"{U}bergabeparameter: 1: Filename erstes Bild
+%                    2: Breite des ersten Bildes
+%                    3: Filename des zweiten Bildes
+%                    4: Breite des zweiten Bildes
+%                    5: kurze Bildunterschrift (Abbildungsverz.)
+%                    6: Bildunterschrift
+%                    7: Label
+%
+\newcommand{\doubleimageonecapsc}[7]{
+    \begin{figure}
+        \begin{center}
+            \myincludegraphics{#1}{#2}
+            \hfill
+            \myincludegraphics{#3}{#4}
+            \small\caption[#5]{\label{#7}#6\showfilename{#1}\showfilename{#3}}
+        \end{center}
+    \end{figure}
+}
+
+
+%%%%%%%%%%%%%%%%%% Bild links, Text rechts
+%
+% [#1]: Gesamtbreite; OPTIONAL!
+% #2: Dateiname Bild
+% #3: Breite Bild
+% #4: Text
+% #5: Breite Text
+% Beispiel: \BildUndText[.9]{goethe.eps}{.25}{blablablubb}{.6}
+%
+\newcommand{\ImageAndText}[5][\linewidth]{
+  \begin{center}
+    \makebox[#1]{
+      \if@noscale
+	        % Obtain and save the native width of each picture in the length definitions.
+	        \settowidth{\CVGMBildEins}{\myincludegraphics{#2}{#3}}
+	        \settowidth{\CVGMBildZwei}{\qquad\quad}
+          \setlength{\CVGMMinipageEins}{\linewidth - \CVGMBildZwei - \CVGMBildEins}
+      \else
+	        \setlength{\CVGMMinipageEins}{#5\cvgmode}
+      \fi
+
+      \raisebox{-\totalheight}{\myincludegraphics{#2}{#3}}
+      \hfill
+      \raisebox{-\totalheight}{\begin{minipage}[b]{\CVGMMinipageEins}{#4}
+      \end{minipage}}
+    }
+    \showfilename{#2}
+  \end{center}
+}
+
+%%%%%%%%%%%%%%%%%% Text links, Bild rechts
+%
+% [#1]: Gesamtbreite; OPTIONAL!
+% #2: Text
+% #3: Breite Text
+% #4: Dateiname Bild
+% #5: Breite Bild
+%
+\newcommand{\TextAndImage}[5][\linewidth]{
+  \begin{center}
+    \makebox[#1]{
+
+      \if@noscale
+	        % Obtain and save the native width of each picture in the length definitions.
+	        \settowidth{\CVGMBildEins}{\myincludegraphics{#4}{#5}}
+	        \settowidth{\CVGMBildZwei}{\qquad\quad}
+          \setlength{\CVGMMinipageEins}{\linewidth - \CVGMBildZwei - \CVGMBildEins}
+      \else
+	        \setlength{\CVGMMinipageEins}{#3\cvgmode}
+      \fi
+
+      \raisebox{-\totalheight}{\begin{minipage}[b]{\CVGMMinipageEins}{#2}
+      \end{minipage}}
+      \hfill
+      \raisebox{-\totalheight}{\myincludegraphics{#4}{#5}}
+    }
+    \showfilename{#4}
+  \end{center}
+}
+

@@ -1,0 +1,170 @@
+%============================================================
+%   LaTeX macros used by Rudolf Mester, NTNU
+%===========================================================
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+
+\newcommand{\bdm}{\begin{displaymath}} 
+\newcommand{\edm}{\end{displaymath}}    
+
+\newcommand{\bea}{\begin{eqnarray}}
+\newcommand{\eea}{\end{eqnarray}}
+
+\newcommand{\beann}{\begin{eqnarray*}}
+\newcommand{\eeann}{\end{eqnarray*}}
+
+\newcommand{\bit}{\begin{itemize}}
+\newcommand{\eit}{\end{itemize}}
+
+\newcommand{\benum}{\begin{enumerate}}
+\newcommand{\eenum}{\end{enumerate}}
+
+
+
+\newcommand{\sourcefile}[1]{\par \textbf{sourcefile = #1}}
+%\newcommand{\infosource}[1]{\par \textbf{source = #1}}
+
+% ----- Definitions, Entsprechung, Folge
+%
+\newcommand{\yields}{\: \longrightarrow \:}
+\newcommand{\shallbe}{\stackrel{!}{=}}
+\newcommand{\definedas}{\; \stackrel{def}{=} \;}
+\newcommand{\isapproximately}{\widehat=}
+%
+
+
+%---------------------------------------------------------------------------
+%   SECTION 2.4:
+%   special functions, statistical operators
+%---------------------------------------------------------------------------
+
+\newcommand{\e}{\mbox{e}}
+\newcommand{\ld}{\mbox{ld}}
+\newcommand{\si}{\mbox{si}}
+\newcommand{\scha}{\bot \! \! \! \bot \! \! \! \bot}
+\newcommand{\erf}{\mbox{erf}}
+\newcommand{\erfc}{\mbox{erfc}}
+\newcommand{\Prob}[1]{\mbox{\sf Pr} \left( #1 \right)}
+\newcommand{\given}{\mid}
+\newcommand{\Erw}[1]{\mbox{\sf E} \left[ #1 \right]}
+\newcommand{\Var}[1]{\mbox{\sf Var} \left[ #1 \right]}
+\newcommand{\Cov}[1]{\mbox{\sf Cov} \left[ #1 \right]}
+\newcommand{\pdf}[1]{\mbox{\sf p}_{#1} \left( #1 \right)}
+\newcommand{\Cor}[1]{\mbox{\sf Cor} \left[ #1 \right]}
+
+%---------------------------------------------------------------------------
+%   SECTION 2.1:
+%   vectors and matrices
+%---------------------------------------------------------------------------
+
+\newcommand{\mat}[1]{\mathbf{#1}}
+
+\renewcommand{\det}[1]{\left| {#1} \right|}
+\newcommand{\trace}[1]{\mbox{\sf Tr} \left\{ #1 \right\}}
+\newcommand{\rank}[1]{\mbox{\sf rank}\left\{ #1 \right\}}
+\newcommand{\diag}[1]{\mbox{\sf diag}\left\{ #1 \right\}}
+\newcommand{\abs}[1]{\left| {#1} \right|}
+\newcommand{\norm}[1]{\left\| {#1} \right\|}
+\newcommand{\eigvec}[1]{\mbox{\sf EigVec}\left( #1 \right)}
+
+
+% ----- vectors ----------------------------
+%
+\newcommand{\va}{\vec a}
+\newcommand{\vb}{\vec b}
+\newcommand{\vc}{\vec c}
+\newcommand{\vd}{\vec d}
+\newcommand{\ve}{\vec e}
+\newcommand{\vf}{\vec f}
+\newcommand{\vg}{\vec g}
+\newcommand{\vh}{\vec h}
+\newcommand{\vi}{\vec i}
+\newcommand{\vj}{\vec j}
+\newcommand{\vk}{\vec k}
+\newcommand{\vl}{\vec l}
+\newcommand{\vm}{\vec m}
+\newcommand{\vn}{\vec n}
+\newcommand{\vo}{\vec o}
+\newcommand{\vp}{\vec p}
+\newcommand{\vq}{\vec q}
+\newcommand{\vr}{\vec r}
+\newcommand{\vs}{\vec s}
+\newcommand{\vt}{\vec t}
+\newcommand{\vu}{\vec u}
+\newcommand{\vv}{\vec v}
+\newcommand{\vw}{\vec w}
+\newcommand{\vx}{\vec x}
+\newcommand{\vy}{\vec y}
+\newcommand{\vz}{\vec z}
+\newcommand{\vnull}{\vec 0}
+
+% ----- matrices
+%
+%  Syntax: \M<Gro{\ss}buchstabe> bzw. \Mnull
+%
+\newcommand{\MA}{\mat{A}}
+\newcommand{\MB}{\mat{B}}
+\newcommand{\MC}{\mat{C}}
+\newcommand{\MD}{\mat{D}}
+\newcommand{\ME}{\mat{E}}
+\newcommand{\MF}{\mat{F}}
+\newcommand{\MG}{\mat{G}}
+\newcommand{\MH}{\mat{H}}
+\newcommand{\MI}{\mat{I}}
+\newcommand{\MJ}{\mat{J}}
+\newcommand{\MK}{\mat{K}}
+\newcommand{\ML}{\mat{L}}
+\newcommand{\MM}{\mat{M}}
+\newcommand{\MN}{\mat{N}}
+\newcommand{\MO}{\mat{O}}
+\newcommand{\MP}{\mat{P}}
+\newcommand{\MQ}{\mat{Q}}
+\newcommand{\MR}{\mat{R}}
+\newcommand{\MS}{\mat{S}}
+\newcommand{\MT}{\mat{T}}
+\newcommand{\MU}{\mat{U}}
+\newcommand{\MV}{\mat{V}}
+\newcommand{\MW}{\mat{W}}
+\newcommand{\MX}{\mat{X}}
+\newcommand{\MY}{\mat{Y}}
+\newcommand{\MZ}{\mat{Z}}
+\newcommand{\Mnull}{\mat{0}}
+
+
+% ---- macros that help to typeset explicit display of vectors and matrices ----
+\newcommand{\Vector}[1]{\left( \begin{array}{c}#1 \end{array} \right)}
+\newcommand{\Matrix}[2]{\left( \begin{array}{*{#1}{c}}#2 \end{array} \right)}
+
+%---------------
+
+\newcommand{\fracds}[2]{{\displaystyle \frac{#1}{#2}}}   % a fraction in display style ('ds')
+%\newcommand{\eqref}[1]{(\ref{#1})}
+
+
+
+
+%—————— packages used by the subsequent macros ————————————————
+
+\usepackage{todonotes}
+
+\usepackage[normalem]{ulem}   % for striking out words \sout. Without the option normalem, it converts \emph into underline
+%---------- Macros for Discussion Notes and Remarks ------------------------
+
+\newcommand{\note}[1]{\todo[inline,color=orange!20]{#1}}
+
+\newcommand{\rmnote}[1]{\todo[inline,color=red!20]{RM: \quad {#1}}}  % Notes by Rudolf Mester
+\newcommand{\asnote}[1]{\todo[inline,color=green!20]{AS: \quad {#1}}} % Notes by Annette Stahl
+\newcommand{\mynote}[1]{\todo[inline,color=violet!20]{MY: \quad {#1}}} % Notes by Mauhing Yip
+\newcommand{\atnote}[1]{\todo[inline,color=blue!20]{AT: \quad {#1}}} % Notes by Andreas Teigen
+\newcommand{\pznote}[1]{\todo[inline,color=gray!20]{PZ: \quad {#1}}} % Notes by Peder Zwilgmeyer
+\newcommand{\ahnote}[1]{\todo[inline,color=yellow!20]{AH: \quad {#1}}} % Notes by Axel Harstad
+\newcommand{\wknote}[1]{\todo[inline,color=cyan!20]{WK: \quad {#1}}} % Notes by William Kvaale
+
+\newcommand{\replacetext}[2]{\sout{#1} \textcolor{red}{\textbf{#2}}}
+%\newcommand{\replacetext}[2]{\textcolor{red}{\textbf{#2}}}
+\newcommand{\deletetext}[1]{\textcolor{blue}{\sout{#1}}}
+\newcommand{\inserttext}[1]{\textcolor{red}{\textbf{#1}}}
+\newcommand{\missingtext}{\colorbox{orange}{$\bigtriangledown$}}  % indicates that some text is missing here
+\newcommand{\markuptext}[1]{\colorbox{yellow}{#1}} % mark a text fragment like with a yellow markup pen
+
+\newcommand{\infosource}[1]{\textcolor{blue}{[ source of this information: #1]}\qquad}

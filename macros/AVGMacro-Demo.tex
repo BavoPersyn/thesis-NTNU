@@ -1,0 +1,278 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+%\usepackage{graphicx}
+
+\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+%\usepackage{graphicx}
+%\usepackage{amssymb}
+%\usepackage{epstopdf}
+
+%\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+%\usepackage{graphicx}
+%\usepackage{xcolor}
+
+
+\usepackage{AVGMacros}
+%\usepackage{ImageMacros}
+\input{ImageMacros.tex}
+
+\title{Some Examples for the AROS Vision Group Latex Macros (AVGMacro.sty)}
+\author{Andreas L. Teigen \and Rudolf Mester }
+\date{October 2020}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\subsection{Person-specific comments / notes}
+
+\verb"\note{This is an anonymous test note}"\\
+yields:\\
+\note{This is an anonymous test note}
+
+\verb"\rmnote{This is a note by Rudolf}"\\
+yields:\\
+\rmnote{This is a note by Rudolf}
+
+Similarly:
+\asnote{This is a note by Annette}
+\atnote{This is a note by Andreas}
+\mynote{This is a note by Mauhing}
+\pznote{This is a note by Peder}
+\ahnote{This is a note by Axel}
+\wknote{This is a note by William}
+
+\subsection{Macros for marking up text parts for editing}
+
+\bit
+\item
+\verb"\deletetext{This text should be deleted}"\\
+yields\\
+\deletetext{This text should be deleted}
+
+\item
+\verb"\replacetext{This text should be}{changed into this}"\\
+yields\\
+\replacetext{This text should be}{changed into this}
+
+\item
+\verb"\inserttext{This text should be inserted}"\\
+yields:\\
+\inserttext{This text should be inserted}
+
+\item
+\verb"\missingtext"\\
+yields:\\
+\missingtext \qquad \qquad(This is a symbol that here some text should be inserted, perhaps
+a word missing, etc.)
+
+\item
+\verb"\markuptext{This text is highlighted}"\\
+yields:\\
+\markuptext{This text is highlighted}
+
+\item
+The macro \verb"infosource{...}" allows the mark the source of some information
+in a text in a standardized way. Example:
+\verb"infosource{NTNU home page}"\\
+yields
+\infosource{NTNU home page}
+\eit
+
+\section{Mathematical macros}
+
+\subsection{Environments for equations in display style}
+
+Writing \verb"\begin{equation} ... \end{equation}" etc.\ is often tedious.
+Here are some shortcuts:
+\bit
+\item \verb"\begin{equation} ... \end{equation}" $ \quad \longrightarrow \quad$
+\verb"\beq ... \eeq"
+
+\item \verb"\begin{displaymode} ... \end{displaymode}" 
+$ \quad \longrightarrow \quad$
+\verb"\bdm ... \edm"
+
+
+\item \verb"\begin{itemize} ... \end{itemize}" 
+$ \quad \longrightarrow \quad$
+\verb"\bit ... \eit"
+
+
+\item \verb"\begin{enumerate} ... \end{enumerate}" 
+$ \quad \longrightarrow \quad$
+\verb"\benum ... \eenum"
+
+\eit
+
+%\beq 
+%x = \frac{1+e^y}{1-e^y{+1}}\\
+%x = \frac{1+e^y}{1-e^y{+1}}
+%\eeq
+%
+%\bdm
+%x = \frac{1+e^y}{1-e^y{+1}}\\
+%x = \frac{1+e^y}{1-e^y{+1}}
+%\edm
+
+\bit
+\item Equation arrays:\\
+\begin{verbatim}
+\bea x &=& \frac{1+e^y}{1-e^y{+1}}\\
+\frac{1+e^y}{1-e^y{+1}} &=& x
+\eea
+\end{verbatim}
+
+yields
+\bea x &=& \frac{1+e^y}{1-e^y{+1}}\\
+\frac{1+e^y}{1-e^y{+1}} &=& x
+\eea
+\eit
+
+%\bit
+%\item first
+%\item second
+%\item third
+%\eit 
+%
+%\benum
+%\item first
+%\item second
+%\item third
+%\eenum 
+
+
+\begin{table}[h]
+\begin{tabular}{lll}
+\verb"$a \yields b$"          & $\quad \longrightarrow \quad$ & $a \yields b$          \\
+\verb"$a \shallbe b$"         & $\quad \longrightarrow \quad$ & $a \shallbe b$         \\
+\verb"$a \definedas b$"       & $\quad \longrightarrow \quad$ & $a \definedas b$       \\
+\verb"$a \isapproximately b$" & $\quad \longrightarrow \quad$ & $a \isapproximately b$ \\
+\verb"$\Prob{x\given y}$"     & $\quad \longrightarrow \quad$ & $\Prob{x\given y}$     \\
+\verb"$\Erw{X}$"              & $\quad \longrightarrow \quad$ & $\Erw{X}$              \\
+\verb"$\Var{X}$"              & $\quad \longrightarrow \quad$ & $\Var{X}$              \\
+\verb"$\Cov{X, Y}$"           & $\quad \longrightarrow \quad$ & $\Cov{X, Y}$          \\
+\verb"$\pdf{f(x)}$"              & $\quad \longrightarrow \quad$ & $\pdf{f(x)}$              \\
+\verb"$\Cor{X,Y}$"              & $\quad \longrightarrow \quad$ & $\Cor{X,Y}$         
+\end{tabular}
+\end{table}
+
+\subsection{Vectors and Matrices}
+
+\subsubsection{Vectors}
+
+There are predefined macros for all small letters that denote a vector:\\
+\verb"$\va = \vb + \vc$"               $\quad \longrightarrow \quad  \va = \vb + \vc$\\
+Note that by redefinition of a \emph{single} macro, vector notation
+can be changed from a vector symbol above the character
+to a boldface character.
+
+The \verb"\Vector{...}" macro simplifies the task of typesetting column vectors
+with explicit display of the vector elements:
+
+\verb"$ \va = \Vector{1 \\ 2 \\ 3 \\4}$"  yields
+\bdm
+ \va =  \Vector{1 \\ 2 \\ 3 \\4}
+\edm
+
+
+\subsubsection{Matrices}
+
+Like in most books, matrices are typeset, by convention, as boldface uppercase letters:\\
+\verb"$\mat{X}$"               $\quad \longrightarrow \quad \mat{X}$\\
+However, this macro is rarely directly used.
+There are predefined macros for all capital letters that denote a matrix:\\
+\verb"$\MA = \MB^{-1} \cdot \MC$"               $\quad \longrightarrow \quad  \MA = \MB^{-1} \cdot \MC$ 
+
+
+\subsubsection{Further macros on vectors and matrices}
+
+\begin{table}[h]
+\begin{tabular}{lll}
+\verb"$\det{\MB}$"              & $\quad \longrightarrow \quad$ & $\det{\MB}$              \\
+\verb"$\trace{\MA}$"              & $\quad \longrightarrow \quad$ & $\trace{\MA}$              \\
+\verb"$\rank{\MA}$"              & $\quad \longrightarrow \quad$ & $\rank{\MA}$              \\
+\verb"$\diag{a_i}$"              & $\quad \longrightarrow \quad$ & $\diag{a_i}$              \\
+\verb"$\abs{a-b}$"              & $\quad \longrightarrow \quad$ & $\abs{a-b}$              \\
+\verb"$\norm{\MA-\MB}$"              & $\quad \longrightarrow \quad$ & $\norm{\MA-\MB}$              \\
+\verb"$\eigvec{\MA}$"              & $\quad \longrightarrow \quad$ & $\eigvec{\MA}$          
+\end{tabular}
+\end{table}
+
+%$a \yields b$
+%
+%$a \shallbe b$
+%
+%$a \definedas b$
+%
+%$a \isapproximately b$
+
+%$\e^x$
+%
+%$\ld x$
+%
+%$\si x$
+%
+%$\scha x$
+%
+%$\erf x$
+
+%$\Prob{x\given y}$
+%
+%$\Erw{X}$
+%
+%$\Var{X}$
+%
+%$\Cov{X, Y}$
+
+%\verb"X"              & $\quad \longrightarrow \quad$ & X              \\
+%\verb"X"              & $\quad \longrightarrow \quad$ & X              \\
+
+
+
+
+
+\subsubsection{Fractions}
+
+The built-in LaTeX macro \verb"\frac" tends to decrease the font size
+of the numerator and the denominator. This often leads to bad readability.
+The macro \verb"\fracds{..}{..}" alleviates this problem:
+
+\verb"$\fracds{1+e^y}{1-e^y{+1}}$" $\qquad \longrightarrow \qquad \fracds{1+e^y}{1-e^y{+1}}$
+
+\clearpage
+
+\section{Image macros}
+
+
+\image{images/image1}{10cm}{This is image test 1}{img:image1}
+
+\imagesc{images/image1}{10cm}{Small caption}{This is image test 2}{img:image2}
+
+\imagenocap{images/image1}{10cm}
+
+\imagenofloat{images/image1}{10cm}
+
+\doubleimage{images/image1}{5cm}{This is image test 3}{img:image3}{images/image2}{5cm}{This is image test 4}{img:image4}
+
+\newcommand{\testseven}{\dimage{images/image1}{5.5cm}{This is image test 7}{img:image7}}
+\newcommand{\testeight}{\dimage{images/image2}{5.5cm}{This is image test 8}{img:image8}}
+\doubleimageparts{\testseven}{\testeight}
+
+\doubleimagenocap{images/image1}{5.5cm}{images/image2}{5.5cm}
+
+\doubleimagenofloat{images/image1}{5.5cm}{images/image2}{5.5cm}
+
+\doubleimageonecap{images/image1}{5.5cm}{images/image2}{5.5cm}{These are 2 images}{img:double1}
+
+
+\doubleimageonecapsc{images/image1}{5.5cm}{images/image2}{5.5cm}{Short caption 10}{These are 2 images}{img:double2}
+
+
+\ImageAndText[11cm]{images/image1}{5cm}{The image to the left shows the Eelume snake robot mid operation}{5cm}
+
+\TextAndImage[11cm]{The image to the right shows the Eelume snake robot mid operation}{5cm}{images/image1}{5cm}
+
+\end{document}
