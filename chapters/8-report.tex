@@ -23,13 +23,13 @@ Figure \autoref{fig:scheme} shows an overview of the different steps the sequenc
     \label{fig:scheme}
 \end{figure}
 
-\section{Converting}
+\section{Converting input image}
 \subsection{Grayscale or color}
 For now, the images are converted to grayscale. The big advantage is that a grayscale image only has one third of the information of an image in color with the same dimensions. Computationally everything will be faster using grayscale instead of color images. The drawback is a loss of information, but that drawback is rather small. The color of the image does not give us much more information to recognise structure and detect keypoints. So it is not worth the extra computations.\bigskip
 
 However, in the footage we are using, the road is marked by colored cones. Most of the time the road is marked by yellow cones but sometimes there are blue cones on the road which means the car should slalom in between these cones. If at one point it should turn out the color of the cones is necessary, this will not be a problem. The newest image is always stored in the buffer in its original color, if we want to determine the color of the cone, this can easily be done by looking at the area where the cone is on the original image.
 
-\subsection{Removing redundant information}\label{ssec:redundant}
+\subsection{Removing irrelevant information}\label{ssec:irrelevant}
 As said before, the images are converted to grayscale. Next to that, they are also cropped. We are only interested in what is going on below the horizon, everything above it will not give us much information. In the footage we are using, there is not much to be cropped, because the footage we have is from a camera that was mounted tilted. Now that the sky and everything above the horizon is cropped out, there is one part of converting left.
 
 \subsection{Masking out the ego-car}
@@ -51,7 +51,7 @@ The car itself is not moving relative to the camera, as the camera is fixed to t
 \end{figure}
 
 \section{Frame-to-frame motion of the car}
-We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix \MR, translation vector $\vt$ and normal vector $\vn$ must be calculated. These can be calculated using keypoints in the frames. 
+We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix $\MR$, translation vector $\vt$ and normal vector $\vn$ must be calculated. These can be calculated using keypoints in the frames. 
 
 \subsection{What are keypoints}
 Keypoints are points in an image that carry a lot of information. If you were to take the point out of the image, it would be easy to recognise where the point is located in the image. To illustrate this, look at figure \autoref{fig:features}, this shows an image with 3 sections cut out. If you had to search for the place section C was cut out, it would be impossible as it could be almost anywhere. Section B is easier to locate, but you could move the cut horizontally without affecting the cut. Moving it vertically (along the gradient) the cut would change. Section A is the easiest to locate. There is no doubt as to where the cut is taken. Moving in either horizontal and vertical direction affects the cut.\bigskip
@@ -72,7 +72,7 @@ There are a lot of different methods and algorithms to find keypoints, describe 
 
 One way to match the keypoints is a Brute-Force Matcher. It is a rather simple matcher that takes the descriptor of a feature in image 1 and matches this descriptor with all the descriptors of image 2. It calculates the distance between these descriptors and returns the closest match. Different distance measurement types can be used. Cross checking is also a possibility, this means that matches are checked both ways. The matcher only returns those matches that are closest in both directions.
 
-\subsection{ORB}
+\subsection{Oriented FAST and Rotated BRIEF: ORB}
 ORB or Oriented FAST and Rotated BRIEF is, as the name suggests, a combination of the FAST detector and BRIEF descriptor. ORB enhances the performance of the two with modifications. FAST is used to find keypoints, after which Harris Corner measure is used to find the top points among them. A pyramid scheme is used to produce multiscale-features. \bigskip 
 
 One of the main advantages of ORB is the speed, according to Rublee et al. (2011) \cite{6126544} at two orders of magnitude faster than SIFT due to the fact that ORB is computationally more efficient. It is also more noise invariant and because of the speed useful in real-time applications.
@@ -84,11 +84,23 @@ As stated before, the footage we have is from a camera that is mounted tilted. T
 \begin{equation}\label{eq:linear}
     ax + by + c = 0
 \end{equation}
-To find the values for $a$, $b$ and $c$ we need two points on the horizon $p_1 = (x_1, y_1)$ and $ p_2 = (x_2, y_2)$. \autoref{eq:linear} can then be rewritten in terms of $p_1$ and $p_2$ as follows:
+To find the values for $a$, $b$ and $c$ we need two points on the horizon $p_1 = (x_1, y_1)$ and $ p_2 = (x_2, y_2)$. The slope of the line is then defined as $\frac{y_2-y_1}{x_2-x_1}$ if $x_1 \neq x_2$. A non-vertical line can be defined by its slope $m$, which we just defined and coordinates of any point on the line \cite{wiki_linear}:
+\begin{equation}\label{eq:slope}
+    y - y_1 = m(x-x_1)
+\end{equation}
+\autoref{eq:slope} can then be rewritten in terms of $p_1$ and $p_2$ as follows:
+\begin{equation}
+    y - y_1 = \frac{y_2-y_1}{x_2-x_1}(x-x_1)
+\end{equation}
+Multiplying both sides by $(x_2-x_1)$ gives the following equation, which is also valid when $x_1 = x_2$:
+\begin{equation}
+    (x_2-x_1)(y-y_1) - (y_2-y_1)(x-x_1) = 0
+\end{equation}
+which can be rewritten as
 \begin{equation}
     (y_1-y_2)x + (x_2-x_1)y + (x_1y_2-x_2y_1) = 0
 \end{equation}
-For now an estimation suffices so we chose two points empirically. In \autoref{ssec:redundant} we already chose a height to cut off redundant information, this height was chosen based on the horizon. For $p_1$ we take this height as $y_1$ and as the camera is tilted to the right this is the leftmost point and $x_1 = 0$. For $p_2$ we chose a point at the utmost right of the image so $x_2$ is equal to the width of the image. For $y_2$ we choose a value by simply looking what seems to be the best option. \bigskip
+For now an estimation suffices so we chose two points empirically. In \autoref{ssec:irrelevant} we already chose a height to cut off irrelevant information, this height was chosen based on the horizon. For $p_1$ we take this height as $y_1$ and as the camera is tilted to the right this is the leftmost point and $x_1 = 0$. For $p_2$ we chose a point at the utmost right of the image so $x_2$ is equal to the width of the image. For $y_2$ we choose a value by simply looking what seems to be the best option. \bigskip
 
 \autoref{fig:key_orig} shows all keypoints detected without filtering out those above the horizon (keypoints on ego-car are already left out). \autoref{fig:key_filtered} shows what keypoints remain after filtering out those above the horizon. In both images, the horizon line is plotted to illustrate where our horizon lays. For illustrating purposes, the contrast in the images is lowered by mapping the gray values between [0, 255] to [128, 255]. By doing this, the image is still clearly visible to the human eye but keypoints and the motion vectors are more visible.
 

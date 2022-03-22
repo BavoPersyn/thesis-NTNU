@@ -28,7 +28,7 @@ To detect if pixel $p$ is a corner, the pixels on circle with radius $r$ around 
     \centering
     \includegraphics[width=1\textwidth]{figures/fast_circle.jpg}
     \caption{Fast with radius 3}
-    \captionsource{Source: }{\cite{10.1007/11744023_34}}
+    \captionsource{Source: \cite{10.1007/11744023_34}}
     \label{fig:fastcircle}
 \end{figure}
 
@@ -99,11 +99,11 @@ However, the benefit of rotational invariance comes at a price. \cite{6126544} n
 \cite{6126544} proposes the following greedy algorithm to get a set of uncorrelated tests with a mean close to 0.5:
 \begin{enumerate}
     \item Run each test  against all training patches.\smallskip
-    \item Order the tests by their distance from a mean of 0.5, forming the vector \vt.\smallskip
+    \item Order the tests by their distance from a mean of 0.5, forming the vector $\vt$.\smallskip
     \item Greedy search:\smallskip
     \begin{enumerate}
-        \item Put the first test into the result vector \vr and remove it from \vt.\smallskip
-        \item Take the next test from \vt, and compare it against all tests in \vr. If its absolute correlation is greater than a threshold, discard it; else add it to \vr.\smallskip
+        \item Put the first test into the result vector $\vr$ and remove it from $\vt$.\smallskip
+        \item Take the next test from $\vt$, and compare it against all tests in $\vr$. If its absolute correlation is greater than a threshold, discard it; else add it to $\vr$.\smallskip
         \item Repeat the previous step until there are 256 tests in R. If there are fewer than 256, raise the threshold and try again.\smallskip
     \end{enumerate}
 \end{enumerate}
@@ -230,7 +230,7 @@ Other methods to estimate the essential parameters can be found in \cite{tekalp}
 \subsection{Decomposition of the Essential Matrix}
 Now that we have the essential parameters that make up the essential matrix $\ME$, we can use this to compute rotation matrix $\MR$ and translation vector $\vt$. To do this, we rewrite $\ME$ as 
 
-\begin{equation} \label{eq:essential}
+\begin{equation} \label{eq:essential2}
     \ME = 
     \begin{pmatrix}
         e1 \mid e2 \mid e3
@@ -244,7 +244,7 @@ Now that we have the essential parameters that make up the essential matrix $\ME
 
 with $\boldsymbol{r_i}, i = 1, 2, 3$ are the columns of rotation matrix $\MR$, $\hat{t}$ and $k$ are the unit vector along and the length of $\vt$ respectively. \cite{tekalp} proposes a method to calculate $\MR$ and  $\hat{t}$ from noise-free as well as a method for noisy point correspondence data. As we strive to have noise-free data, we'll discuss only the first method. For the full step by step mathematical explanation, we refer to \cite{tekalp}. Here we will limit ourselves to the essential steps.\bigskip
 
-By looking at \autoref{eq:essential}, it is clear that each column of $\ME$ is orthogonal to $\vt$. By taking the cross product of two of the three columns, the unit vector along $\vt$ can be calculated:
+By looking at \autoref{eq:essential2}, it is clear that each column of $\ME$ is orthogonal to $\vt$. By taking the cross product of two of the three columns, the unit vector along $\vt$ can be calculated:
 \begin{equation}
     \hat{t} = \pm \frac{\boldsymbol{e_i \times e_j}}{\mid\mid e_i \times e_j\mid\mid}
     \quad i \neq j
