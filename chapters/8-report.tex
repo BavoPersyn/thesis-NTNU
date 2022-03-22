@@ -14,7 +14,7 @@ First, we need a way to step through the footage of the race car efficiently. Fo
 
 With specific keys, it is possible to go forwards and backwards through the sequence. When advancing through the sequence a new image is loaded in the buffer. It is also possible to jump multiple frames ahead/backwards. The buffer is then cleared and filled with the correct images. With a press of the space bar, the sequencer continuously takes the next input image and loops the sequence.\bigskip
 
-Figure \autoref{fig:scheme} shows an overview of the different steps the sequencer goes through. The "Process Image Pair" component calculates the Homography \underline{${H}$} between the two frames in the FIFO. Based on the Homography, the rotation matrix \underline{${R}$}, translation vector $\vec{t}$ and normal vector $\vec{n}$ can be calculated which will be used to estimate the motion of the car.
+Figure \autoref{fig:scheme} shows an overview of the different steps the sequencer goes through. The "Process Image Pair" component calculates the Homography $\MH$ between the two frames in the FIFO. Based on the Homography, the rotation matrix $\MR$, translation vector $\vt$ and normal vector $\vn$ can be calculated which will be used to estimate the motion of the car.
 
 \begin{figure}
     \centering
@@ -51,7 +51,7 @@ The car itself is not moving relative to the camera, as the camera is fixed to t
 \end{figure}
 
 \section{Frame-to-frame motion of the car}
-We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix \underline{${R}$}, translation vector $\vec{t}$ and normal vector $\vec{n}$ must be calculated. These can be calculated using keypoints in the frames. 
+We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix \MR, translation vector $\vt$ and normal vector $\vn$ must be calculated. These can be calculated using keypoints in the frames. 
 
 \subsection{What are keypoints}
 Keypoints are points in an image that carry a lot of information. If you were to take the point out of the image, it would be easy to recognise where the point is located in the image. To illustrate this, look at figure \autoref{fig:features}, this shows an image with 3 sections cut out. If you had to search for the place section C was cut out, it would be impossible as it could be almost anywhere. Section B is easier to locate, but you could move the cut horizontally without affecting the cut. Moving it vertically (along the gradient) the cut would change. Section A is the easiest to locate. There is no doubt as to where the cut is taken. Moving in either horizontal and vertical direction affects the cut.\bigskip
@@ -90,7 +90,7 @@ To find the values for $a$, $b$ and $c$ we need two points on the horizon $p_1 =
 \end{equation}
 For now an estimation suffices so we chose two points empirically. In \autoref{ssec:redundant} we already chose a height to cut off redundant information, this height was chosen based on the horizon. For $p_1$ we take this height as $y_1$ and as the camera is tilted to the right this is the leftmost point and $x_1 = 0$. For $p_2$ we chose a point at the utmost right of the image so $x_2$ is equal to the width of the image. For $y_2$ we choose a value by simply looking what seems to be the best option. \bigskip
 
-\autoref{fig:key_orig} shows all keypoints detected without filtering out those above the horizon (keypoints on ego-car are already left out). \autoref{fig:key_filtered} shows what keypoints remain after filtering out those above the horizon. In both images, the horizon line is plotted to illustrate where our horizon lays.
+\autoref{fig:key_orig} shows all keypoints detected without filtering out those above the horizon (keypoints on ego-car are already left out). \autoref{fig:key_filtered} shows what keypoints remain after filtering out those above the horizon. In both images, the horizon line is plotted to illustrate where our horizon lays. For illustrating purposes, the contrast in the images is lowered by mapping the gray values between [0, 255] to [128, 255]. By doing this, the image is still clearly visible to the human eye but keypoints and the motion vectors are more visible.
 
 \begin{figure}
     \centering

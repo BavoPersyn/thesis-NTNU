@@ -76,22 +76,22 @@ As stated before, BRIEF is not robust when it comes to in-plane rotations. Even 
 
 To get to the steered BRIEF operator, a $2\times n$ matrix is defined as follows:
 \begin{equation}
-    S = \begin{pmatrix}
+    \MS = \begin{pmatrix}
     x_1,...,x_n \\
     y_1,...,y_n
     \end{pmatrix}
 \end{equation}
 
-The steered version $S_\theta$ of $S$ is constructed using the rotation matrix $R_\theta$, $\theta$ being the orientation of the patch:
+The steered version $\MS_\theta$ of $\MS$ is constructed using the rotation matrix $\MR_\theta$, $\theta$ being the orientation of the patch:
 \begin{equation}
-    S_\theta = R_\theta S
+    \MS_\theta = \MR_\theta \MS
 \end{equation}
 The steered BRIEF operator is now
 \begin{equation}
-    g_n(\boldsymbol{p},\theta):=f_n(\boldsymbol{p})\mid(x_i,y_i)\in S_\theta
+    g_n(\boldsymbol{p},\theta):=f_n(\boldsymbol{p})\mid(x_i,y_i)\in \MS_\theta
 \end{equation}
 
-A lookup table is constructed for values of $\theta = 2k\pi/30, k \in \mathbb{N}_0$. If the keypoint orientation $\theta$ is consistent across views, the correct set of points $S_\theta$ will be used to compute the descriptor.
+A lookup table is constructed for values of $\theta = 2k\pi/30, k \in \mathbb{N}_0$. If the keypoint orientation $\theta$ is consistent across views, the correct set of points $\MS_\theta$ will be used to compute the descriptor.
 
 \subsubsection{rBRIEF}
 However, the benefit of rotational invariance comes at a price. \cite{6126544} noticed a loss of variance and high correlation among the binary tests. To cope with these shortcomings, they developed a learning method to choose a good subset of binary tests. The goal is to have high variance and means close to 0.5, as well as being uncorrelated. To do this, they look at all binary tests.\bigskip
@@ -99,11 +99,11 @@ However, the benefit of rotational invariance comes at a price. \cite{6126544} n
 \cite{6126544} proposes the following greedy algorithm to get a set of uncorrelated tests with a mean close to 0.5:
 \begin{enumerate}
     \item Run each test  against all training patches.\smallskip
-    \item Order the tests by their distance from a mean of 0.5, forming the vector T.\smallskip
+    \item Order the tests by their distance from a mean of 0.5, forming the vector \vt.\smallskip
     \item Greedy search:\smallskip
     \begin{enumerate}
-        \item Put the first test into the result vector R and remove it from T.\smallskip
-        \item Take the next test from T, and compare it against all tests in R. If its absolute correlation is greater than a threshold, discard it; else add it to R.\smallskip
+        \item Put the first test into the result vector \vr and remove it from \vt.\smallskip
+        \item Take the next test from \vt, and compare it against all tests in \vr. If its absolute correlation is greater than a threshold, discard it; else add it to \vr.\smallskip
         \item Repeat the previous step until there are 256 tests in R. If there are fewer than 256, raise the threshold and try again.\smallskip
     \end{enumerate}
 \end{enumerate}
@@ -116,7 +116,7 @@ Rublee et al.\cite{6126544} is the perfect paper for a more detailed explanation
 % Visual Odometry (VO) is a process that calculates the motion (rotation and translation) of a body based on the images of a single or multiple cameras attached to the body. There are multiple ways to achieve this. 
 
 \section{Motion estimation}
-Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint $\boldsymbol{X} = [X_1, X_2, X_3]^T$ that has been matched to keypoint $\boldsymbol{X'} = [X_1', X_2', X_3']^T$. The movement of this keypoint can be described as follows: 
+Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint $\MX = [X_1, X_2, X_3]^T$ that has been matched to keypoint $\MX' = [X_1', X_2', X_3']^T$. The movement of this keypoint can be described as follows: 
 
 \begin{equation} \label{eq:1}
     \begin{pmatrix}
@@ -124,22 +124,22 @@ Now that keypoints are detected and matched, the relation between these keypoint
         X_2' \\
         X_3'
     \end{pmatrix}
-    = \boldsymbol{R}
+    = \MR
     \begin{pmatrix}
         X_1 \\
         X_2 \\
         X_3
     \end{pmatrix}
-    + \boldsymbol{T}
+    + \vt
 \end{equation}
-where $\boldsymbol{R}$ is a $3 \times 3$ matrix describing the rotation and $\boldsymbol{T}$ a vector describing the translation. Also valid is this: 
+where $\MR$ is a $3 \times 3$ matrix describing the rotation and $\vt$ a vector describing the translation. Also valid is this: 
 \begin{equation}
     \begin{pmatrix}
         X_1' \\
         X_2' \\
         X_3'
     \end{pmatrix}
-    = \boldsymbol{H}
+    = \MH
     \begin{pmatrix}
         X_1 \\
         X_2 \\
@@ -147,12 +147,12 @@ where $\boldsymbol{R}$ is a $3 \times 3$ matrix describing the rotation and $\bo
     \end{pmatrix}.
 \end{equation} 
 
-So it is clear that there is a relation between \boldsymbol{H} on the one hand and $\boldsymbol{R}$ and $\boldsymbol{T}$ on the other hand.\bigskip
+So it is clear that there is a relation between $\MH$ on the one hand and $\MR$ and $\vt$ on the other hand.\bigskip
 
 \subsection{Essential matrix}
-OpenCV has a method \textit{findHomography} to find this Homography based on the keypoints detected and matched. We need to use this homography to compute rotation-matrix $\boldsymbol{R}$ and translation-vector $\boldsymbol{T}$. In \cite{improc} T. S. Huang proposed that with at least eight keypoint matches a two-step linear algorithm can be developed. To do this, intermediate values called essential parameters need to be estimated first. These essential parameters form a matrix $\boldsymbol{E}$ called the essential matrix:
+OpenCV has a method \textit{findHomography} to find this Homography based on the keypoints detected and matched. We need to use this homography to compute rotation-matrix $\MR$ and translation-vector $\vt$. In \cite{improc} T. S. Huang proposed that with at least eight keypoint matches a two-step linear algorithm can be developed. To do this, intermediate values called essential parameters need to be estimated first. These essential parameters form a matrix $\ME$ called the essential matrix:
 \begin{equation}
-    \boldsymbol{E} = 
+    \ME = 
     \begin{pmatrix}
         e_1&e_2&e_3 \\
         e_4&e_5&e_6 \\
@@ -163,18 +163,18 @@ OpenCV has a method \textit{findHomography} to find this Homography based on the
         T_3&0&-T_1 \\
         -T_2&T_1&0
     \end{pmatrix}
-     \boldsymbol{R}
+     \MR
 \end{equation}
 
-These nine essential elements are not all independent due to the fact that  $\boldsymbol{E}$ is a product of a skew-symmetric matrix and a rotation matrix.\bigskip
+These nine essential elements are not all independent due to the fact that  $\ME$ is a product of a skew-symmetric matrix and a rotation matrix.\bigskip
 
-\cite{tekalp} states that vectors $\boldsymbol{X'}$, $\boldsymbol{T}$ and $\boldsymbol{RX}$ are coplanar, since $\boldsymbol{X'} = \boldsymbol{RX} + \boldsymbol{T}$ from (\ref{eq:1}). So now we have 
+\cite{tekalp} states that vectors $\MX'$, $\vt$ and $\MR\MX$ are coplanar, since $\MX' = \MR\MX + \vt$ from (\ref{eq:1}). So now we have 
 \begin{equation}
-    \boldsymbol{X} \cdot (\boldsymbol{T} \times \boldsymbol{RX}) = 0
+    \MX \cdot (\vt \times \MR\MX) = 0
 \end{equation}
-because $(\boldsymbol{T} \times \boldsymbol{RX}$ is orthogonal to this plane. From this, it follows that 
+because $(\vt \times \MR\MX$ is orthogonal to this plane. From this, it follows that 
 \begin{equation} \label{eq:2}
-    \boldsymbol{X'^TEX} = 0
+    \MX'^T\ME\MX = 0
 \end{equation}
 
 We want to obtain a relationship in terms of the image plane coordinates. To do this, we divide both sides of \ref{eq:2} by $X_3 X'_3$:
@@ -182,7 +182,7 @@ We want to obtain a relationship in terms of the image plane coordinates. To do 
     \begin{pmatrix}
         x_1'&x_2&1
     \end{pmatrix}
-    \boldsymbol{E}
+    \ME
     \begin{pmatrix}
         x1 \\
         x2 \\
@@ -221,43 +221,43 @@ As stated before, one of the essential parameters will be set to one. Take $e_9 
     = -1
 \end{equation}
 
-This linear equation in eight essential parameters can be set up as a system of $N$ linear equations in 8 unknowns. To solve this, we need at least $N \geq 8$ keypoint matches. The solution of this equation gives the essential matrix $\boldsymbol{E}$ up to a scale factor (as discussed before). We took $e_9$ as the scale factor, but all of the other essential parameters could have been chosen as well. When using this method, $e_i, i = 1,...,9$ will be chosen based on the condition number, the $e_i$ that yields the smallest condition number will be chosen as scale factor.
+This linear equation in eight essential parameters can be set up as a system of $N$ linear equations in 8 unknowns. To solve this, we need at least $N \geq 8$ keypoint matches. The solution of this equation gives the essential matrix $\ME$ up to a scale factor (as discussed before). We took $e_9$ as the scale factor, but all of the other essential parameters could have been chosen as well. When using this method, $e_i, i = 1,...,9$ will be chosen based on the condition number, the $e_i$ that yields the smallest condition number will be chosen as scale factor.
 
-To have a solution for this equation, the coefficient matrix needs to have full rank, \cite{tekalp} states that this is the case if $\boldsymbol{T} \neq 0$ and the shape of the 3-D surface satisfies certain conditions, called the surface constraint.
+To have a solution for this equation, the coefficient matrix needs to have full rank, \cite{tekalp} states that this is the case if $\vt \neq 0$ and the shape of the 3-D surface satisfies certain conditions, called the surface constraint.
 
 Other methods to estimate the essential parameters can be found in \cite{tekalp}.
 
 \subsection{Decomposition of the Essential Matrix}
-Now that we have the essential parameters that make up the essential matrix $\boldsymbol{E}$, we can use this to compute rotation matrix $\boldsymbol{R}$ and translation vector $\boldsymbol{T}$. To do this, we rewrite $\boldsymbol{E}$ as 
+Now that we have the essential parameters that make up the essential matrix $\ME$, we can use this to compute rotation matrix $\MR$ and translation vector $\vt$. To do this, we rewrite $\ME$ as 
 
 \begin{equation} \label{eq:essential}
-    \boldsymbol{E} = 
+    \ME = 
     \begin{pmatrix}
         e1 \mid e2 \mid e3
     \end{pmatrix} = 
     \begin{pmatrix}
-        k \boldsymbol{\hat{T}} \times \boldsymbol{r_1} \mid
-        k \boldsymbol{\hat{T}} \times \boldsymbol{r_2} \mid
-        k \boldsymbol{\hat{T}} \times \boldsymbol{r_3} 
+        k \hat{t} \times \boldsymbol{r_1} \mid
+        k \hat{t} \times \boldsymbol{r_2} \mid
+        k \hat{t} \times \boldsymbol{r_3} 
     \end{pmatrix}
 \end{equation}
 
-with $\boldsymbol{r_i}, i = 1, 2, 3$ are the columns of rotation matrix $\boldsymbol{R}$, $\boldsymbol{\hat{T}}$ and $k$ are the unit vector along and the length of $\boldsymbol{T}$ respectively. \cite{tekalp} proposes a method to calculate $\boldsymbol{R}$ and  $\boldsymbol{\hat{T}}$ from noise-free as well as a method for noisy point correspondence data. As we strive to have noise-free data, we'll discuss only the first method. For the full step by step mathematical explanation, we refer to \cite{tekalp}. Here we will limit ourselves to the essential steps.\bigskip
+with $\boldsymbol{r_i}, i = 1, 2, 3$ are the columns of rotation matrix $\MR$, $\hat{t}$ and $k$ are the unit vector along and the length of $\vt$ respectively. \cite{tekalp} proposes a method to calculate $\MR$ and  $\hat{t}$ from noise-free as well as a method for noisy point correspondence data. As we strive to have noise-free data, we'll discuss only the first method. For the full step by step mathematical explanation, we refer to \cite{tekalp}. Here we will limit ourselves to the essential steps.\bigskip
 
-By looking at \autoref{eq:essential}, it is clear that each column of $\boldsymbol{E}$ is orthogonal to $\boldsymbol{T}$. By taking the cross product of two of the three columns, the unit vector along $\boldsymbol{T}$ can be calculated:
+By looking at \autoref{eq:essential}, it is clear that each column of $\ME$ is orthogonal to $\vt$. By taking the cross product of two of the three columns, the unit vector along $\vt$ can be calculated:
 \begin{equation}
-    \boldsymbol{\hat{T}} = \pm \frac{\boldsymbol{e_i \times e_j}}{\mid\mid e_i \times e_j\mid\mid}
+    \hat{t} = \pm \frac{\boldsymbol{e_i \times e_j}}{\mid\mid e_i \times e_j\mid\mid}
     \quad i \neq j
 \end{equation}
 
 The sign of the unit vector can't be calculated with the equation above. Zhuang \cite{ZHUANG1989175} proposed the following to do so:
 \begin{equation}
     \sum\begin{pmatrix}
-        \boldsymbol{\hat{T}} \times \begin{pmatrix}
+        \hat{t} \times \begin{pmatrix}
             x_1' & x_2' & 1
         \end{pmatrix}^T
     \end{pmatrix}^T
-    \cdot \boldsymbol{E}\begin{pmatrix}
+    \cdot \ME\begin{pmatrix}
         x_1 & x_2 & 1
     \end{pmatrix}^T
     > 0
@@ -272,37 +272,37 @@ Calculating $k$ this way doesn't solve the problem we had with the scale as $\bo
 
 To calculate $\boldsymbol{r_1}$ we first calculate $\boldsymbol{e_2 \times e_3}$:
 \begin{align*}
-    \boldsymbol{e_2} \times \boldsymbol{e_3} = [(k\boldsymbol{\hat{T}}\times \boldsymbol{r_2})\cdot\boldsymbol{r_3}]k\boldsymbol{\hat{T}} - [(k \boldsymbol{\hat{T}} \times \boldsymbol{r_2})k \boldsymbol{\hat{T}}]\boldsymbol{r_3}
+    \boldsymbol{e_2} \times \boldsymbol{e_3} = [(k\hat{t}\times \boldsymbol{r_2})\cdot\boldsymbol{r_3}]k\hat{t} - [(k \hat{t} \times \boldsymbol{r_2})k \hat{t}]\boldsymbol{r_3}
 \end{align*}
 The first term can be simplified as 
 \begin{align}
-    [(\boldsymbol{r_2}\times\boldsymbol{r_3})\cdot k\boldsymbol{\hat{T}}]k\boldsymbol{\hat{T}} = (\boldsymbol{r_1}\cdot k\boldsymbol{\hat{T}})k\boldsymbol{\hat{T}}
+    [(\boldsymbol{r_2}\times\boldsymbol{r_3})\cdot k\hat{t}]k\hat{t} = (\boldsymbol{r_1}\cdot k\hat{t})k\hat{t}
 \end{align}
-because $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\boldsymbol{r_3}$ are mutually orthogonal and have unity length. Since $(k\boldsymbol{\hat{T}}\times\boldsymbol{r_2})$ is orthogonal to $k\boldsymbol{\hat{T}}$, the second term is zero. So we have the following equations (\autoref{eq:r2} and \autoref{eq:r3} can be calculated in an analogous way):
+because $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\boldsymbol{r_3}$ are mutually orthogonal and have unity length. Since $(k\hat{t}\times\boldsymbol{r_2})$ is orthogonal to $k\hat{t}$, the second term is zero. So we have the following equations (\autoref{eq:r2} and \autoref{eq:r3} can be calculated in an analogous way):
 \begin{equation}
-    \boldsymbol{e_2} \times \boldsymbol{e_3} = k\boldsymbol{\hat{T}}(k\boldsymbol{\hat{T}}\cdot\boldsymbol{r_1})
+    \boldsymbol{e_2} \times \boldsymbol{e_3} = k\hat{t}(k\hat{t}\cdot\boldsymbol{r_1})
 \end{equation}
 \begin{equation}\label{eq:r2}
-    \boldsymbol{e_3} \times \boldsymbol{e_1} = k\boldsymbol{\hat{T}}(k\boldsymbol{\hat{T}}\cdot\boldsymbol{r_2})
+    \boldsymbol{e_3} \times \boldsymbol{e_1} = k\hat{t}(k\hat{t}\cdot\boldsymbol{r_2})
 \end{equation}
 \begin{equation}\label{eq:r3}
-    \boldsymbol{e_1} \times \boldsymbol{e_2} = k\boldsymbol{\hat{T}}(k\boldsymbol{\hat{T}}\cdot\boldsymbol{r_3})
+    \boldsymbol{e_1} \times \boldsymbol{e_2} = k\hat{t}(k\hat{t}\cdot\boldsymbol{r_3})
 \end{equation}
 
 By solving these equations to $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\boldsymbol{r_3}$ we get the following equations:
 \begin{equation}
-    \boldsymbol{r_1} = \biggl[\frac{1}{k^2}\boldsymbol{\hat{T}}\cdot(\boldsymbol{e_2}\times\boldsymbol{e_3})\biggr]\boldsymbol{\hat{T}}+\frac{1}{k}(\boldsymbol{e_1}\times\boldsymbol{\hat{T}})
+    \boldsymbol{r_1} = \biggl[\frac{1}{k^2}\hat{t}\cdot(\boldsymbol{e_2}\times\boldsymbol{e_3})\biggr]\hat{t}+\frac{1}{k}(\boldsymbol{e_1}\times\hat{t})
 \end{equation}
 \begin{equation}
-    \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\boldsymbol{\hat{T}}\cdot(\boldsymbol{e_3}\times\boldsymbol{e_1})\biggr]\boldsymbol{\hat{T}}+\frac{1}{k}(\boldsymbol{e_2}\times\boldsymbol{\hat{T}})
+    \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\hat{t}\cdot(\boldsymbol{e_3}\times\boldsymbol{e_1})\biggr]\hat{t}+\frac{1}{k}(\boldsymbol{e_2}\times\hat{t})
 \end{equation}
 \begin{equation}
-    \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\boldsymbol{\hat{T}}\cdot(\boldsymbol{e_1}\times\boldsymbol{e_2})\biggr]\boldsymbol{\hat{T}}+\frac{1}{k}(\boldsymbol{e_3}\times\boldsymbol{\hat{T}})
+    \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\hat{t}\cdot(\boldsymbol{e_1}\times\boldsymbol{e_2})\biggr]\hat{t}+\frac{1}{k}(\boldsymbol{e_3}\times\hat{t})
 \end{equation}\bigskip
 
 \subsection{Homography}
 
-However, the use of essential matrix $\boldsymbol{E}$ is too general. When all keypoints lie on a planar surface, we can treat it differently and us Homography $\boldsymbol{H}$. As we only look at the points below the horizon, all keypoints lie on a plane that can be described as
+However, the use of essential matrix $\ME$ is too general. When all keypoints lie on a planar surface, we can treat it differently and us Homography $\MH$. As we only look at the points below the horizon, all keypoints lie on a plane that can be described as
 \begin{equation}
     aX_1 + bX_2 + cX_3 = 1
 \end{equation}
@@ -312,12 +312,12 @@ where $(a, b, c)^T$ is the normal vector of this plane. \autoref{eq:1} can then 
         X_1' \\
         X_2' \\
         X_3'
-    \end{pmatrix} = \boldsymbol{R}
+    \end{pmatrix} = \MR
     \begin{pmatrix}
         X_1 \\
         X_2 \\
         X_3
-    \end{pmatrix} + \boldsymbol{T}
+    \end{pmatrix} + \vt
     \begin{pmatrix}
         a & b & c
     \end{pmatrix}
@@ -343,7 +343,7 @@ or
         X_1 \\
         X_2 \\
         X_3
-    \end{pmatrix} = \boldsymbol{A}
+    \end{pmatrix} = \MA
     \begin{pmatrix}
         X_1 \\
         X_2 \\
@@ -352,7 +352,7 @@ or
 \end{equation}
 with
 \begin{equation} \label{eq:matrixA}
-    \boldsymbol{A} = \boldsymbol{R} + \boldsymbol{T}
+    \MA = \MR + \vt
     \begin{pmatrix}
         a & b & c
     \end{pmatrix}
@@ -383,34 +383,34 @@ $a_1,...,a_9$ are called the pure parameters \cite{506592e3b5484e57928e215df49a8
 So if we have at least four keypoint matches, eight or more linear equations can be set up to solve for the pure parameters. \cite{improc} showed that the rank of the matrix is 8 if and only if no three of the four observed points are collinear in three dimensions.
 
 \subsection{Estimation of the motion and structure parameters}
-We now have found the pure parameters and thus matrix $\boldsymbol{A}$. As \autoref{eq:matrixA} states, motion parameters $\boldsymbol{R}$ and $\boldsymbol{T}$ can be derived from $\boldsymbol{A}$, as well as the normal vector $(a,b,c)^T$. To do this, we need to decompose $\boldsymbol{A}$ using singular value decomposition (SVD). \cite{Huang:86} describes describes a method to do this:
+We now have found the pure parameters and thus matrix $\MA$. As \autoref{eq:matrixA} states, motion parameters $\MR$ and $\vt$ can be derived from $\MA$, as well as the normal vector $(a,b,c)^T$. To do this, we need to decompose $\MA$ using singular value decomposition (SVD). \cite{Huang:86} describes describes a method to do this:
 
-First of all, we write matrix $\boldsymbol{A}$ as 
+First of all, we write matrix $\MA$ as 
 \begin{equation}
-    \boldsymbol{A} = \boldsymbol{U}
+    \MA = \MU
     \begin{pmatrix}
         \lambda_1 & 0 & 0 \\
         0 & \lambda_2 & 0 \\
         0 & 0 & \lambda_3
-    \end{pmatrix}\boldsymbol{V}^T
+    \end{pmatrix}\MV^T
 \end{equation}
 
-where $\boldsymbol{U} = (\boldsymbol{u_1}\mid\boldsymbol{u_2}\mid\boldsymbol{u_3})$ and $\boldsymbol{V} = (\boldsymbol{v_1}\mid\boldsymbol{v_2}\mid\boldsymbol{v_3})$ are $3\times 3$ orthogonal matrices and $\lambda_1\geq\lambda_2\geq\lambda_3\geq 0$ are the singular values of $\boldsymbol{A}$. Depending on the multiplicity of the singular values there are 3 different cases.
+where $\MU = (\boldsymbol{u_1}\mid\boldsymbol{u_2}\mid\boldsymbol{u_3})$ and $\MV = (\boldsymbol{v_1}\mid\boldsymbol{v_2}\mid\boldsymbol{v_3})$ are $3\times 3$ orthogonal matrices and $\lambda_1\geq\lambda_2\geq\lambda_3\geq 0$ are the singular values of $\MA$. Depending on the multiplicity of the singular values there are 3 different cases.
 
 \subsubsection{Multiplicity of singular values is 1: $\lambda_1 > \lambda_2 > \lambda_3$}
 
 This indicates that the motion can be decomposed into a rotation around an axis through the origin and a translation in a direction, not along the normal vector. In this case, there are two possible solutions for the pure parameters:
 \begin{equation*}
-    \boldsymbol{R} = \boldsymbol{U}
+    \MR = \MU
     \begin{pmatrix}
         \alpha & 0 & \beta \\
         0 & 1 & 0 \\
         -s\beta & 0 & s\alpha
     \end{pmatrix}
-    \boldsymbol{V}^T
+    \MV^T
 \end{equation*}
 \begin{equation*}
-    \boldsymbol{T} = k\biggl(-\beta\boldsymbol{u_1} + (\frac{\lambda_3}{\lambda_2}-s\alpha)\boldsymbol{u_3}\biggr)
+    \vt = k\biggl(-\beta\boldsymbol{u_1} + (\frac{\lambda_3}{\lambda_2}-s\alpha)\boldsymbol{u_3}\biggr)
 \end{equation*}
 \begin{equation*}
     \begin{pmatrix}
@@ -428,17 +428,17 @@ with
     \delta = \pm\biggl(\frac{\lambda_1^2-\lambda_2^2}{\lambda_2^2-\lambda_3^2}\biggr)^\frac{1}{2}
 \end{equation*}
 \begin{equation*}
-    s = det(\boldsymbol{U}) det(\boldsymbol{V})
+    s = det(\MU) det(\MV)
 \end{equation*}
 and $k$ is an arbitrary scale factor (either positive or negative). To resolve the scale ambiguity, $1/X_3 > 0$ is required for all points.
 
 \subsubsection{Multiplicity of singular values is 2: $\lambda_1 = \lambda_2 \neq \lambda_3$}
 This indicates that the motion can be decomposed into a rotation around an axis through the origin and a translation along the normal vector. Now a unique solution for the motion parameters exist:
 \begin{equation*}
-    \boldsymbol{R} = \frac{1}{\lambda_1}\boldsymbol{A}-\biggl(\frac{\lambda_3}{\lambda_1}-s\biggr)\boldsymbol{u_3}\boldsymbol{v_3^T}
+    \MR = \frac{1}{\lambda_1}\MA-\biggl(\frac{\lambda_3}{\lambda_1}-s\biggr)\boldsymbol{u_3}\boldsymbol{v_3^T}
 \end{equation*}
 \begin{equation*}
-    \boldsymbol{T} = k\biggl(\frac{\lambda_3}{\lambda_1}-s\biggr)
+    \vt = k\biggl(\frac{\lambda_3}{\lambda_1}-s\biggr)
 \end{equation*}
 \begin{equation*}
     \begin{pmatrix}
@@ -446,12 +446,26 @@ This indicates that the motion can be decomposed into a rotation around an axis 
     \end{pmatrix}^T = \frac{1}{k}\boldsymbol{v_3}
 \end{equation*}
 \begin{equation*}
-    s = det(\boldsymbol{U}) det(\boldsymbol{V})
+    s = det(\MU) det(\MV)
 \end{equation*}
 Once again, $k$ is an arbitrary scale factor.
 \subsubsection{Multiplicity of singular values is 2: $\lambda_1 = \lambda_2 = \lambda_3$}
 This indicates the rotation is a pure rotation around an axis through the origin. Once again, there's a unique solution for the rotation matrix:
 \begin{equation*}
-    \boldsymbol{R} = (\frac{1}{\lambda_1})\boldsymbol{A}
+    \MR = (\frac{1}{\lambda_1})\MA
 \end{equation*}
-In this case, it is not possible to determine translation vector $\boldsymbol{T}$ and the normal vector $(a, b, c)^T$ as there is not translation.
+In this case, it is not possible to determine translation vector $\vt$ and the normal vector $(a, b, c)^T$ as there is not translation.
+
+
+\section{Camera model}
+As we work with 2-D images that are a representation of a 3-D world, there are some things to be said about the projection from 3-D to 2-D. The camera used and it's properties are important factors in determining motion.
+
+\subsection{Pinhole camera model}
+\autoref{fig:cammodel} shows the pinhole camera model. $C$ is the perspective center of the camera, the plane $E$ is the plane on which the 3-D world is projected upon. $H$ is called the principal point, it's the perpendicular projection of $C$ onto $E$, this axis is called the optical axis. $f$ is a constant based on the properties of the camera.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/camera_model.png}
+    \caption{Pinhole camera model}
+    \label{fig:cammodel}
+\end{figure}
