@@ -74,6 +74,7 @@ class Sequencer:
             self.black = [0]
         else:
             self.black = [0, 0, 0]
+        self.mask = self.mask[self.horizon:self.height, 0:self.width]
 
     def fill_fifo(self, sequence, start, stop):
         # fill FIFO with the next images after being processed, keep last new image in buffer
@@ -222,7 +223,7 @@ class Sequencer:
             p1 = (int(kp1[match.queryIdx].pt[0]), int(kp1[match.queryIdx].pt[1]))
             p2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
             # Check if point is part of ego-car or above the horizon
-            in_mask = (self.mask[p1[1]][p1[0]] == [0, 0, 0]).all() or (self.mask[p2[1]][p2[0]] == [0, 0, 0]).all()
+            in_mask = (self.mask[p1[1]][p1[0]] == [0., 0., 0.]).all() or (self.mask[p2[1]][p2[0]] == [0., 0., 0.]).all()
             above = (self.a * p1[0] + self.b * p1[1] + self.c) < 0 or (self.a * p2[0] + self.b * p2[1] + self.c) < 0
             if in_mask or above:
                 # at least one of the keypoints is part of the ego-car or above the horizon, this match will be ignored
@@ -247,7 +248,6 @@ class Sequencer:
 
     def process_image(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
         # image = cv2.circle(image, self.principal_point, radius=5, color=(255, 0, 0), thickness=3)
         image = image[self.horizon:self.height, 0:self.width]
         return image
@@ -256,14 +256,18 @@ class Sequencer:
         img = self.reduce_contrast(image)
         # converted to BGR so keypoints can be shown in color
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        img[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
+
         # Show only the first 20, these are the best matches, bad matches make it unclear
         for i in range(len(points[0])):
             point1 = (int(points[0][i][0]), int(points[0][i][1]))
             point2 = (int(points[1][i][0]), int(points[1][i][1]))
             color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-            img = cv2.circle(img, point1, radius=3, color=color, thickness=2)
-            img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
-            img = cv2.line(img, point1, point2, color=color, thickness=1)
+            img = cv2.circle(img, point1, radius=6, color=color, thickness=3)
+            # img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
+            # img = cv2.line(img, point1, point2, color=color, thickness=2)
+            # horizon line
+            # img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
         return img
 
     def reduce_contrast(self, image):
