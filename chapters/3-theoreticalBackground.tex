@@ -116,14 +116,14 @@ Rublee et al.\cite{6126544} is the perfect paper for a more detailed explanation
 % Visual Odometry (VO) is a process that calculates the motion (rotation and translation) of a body based on the images of a single or multiple cameras attached to the body. There are multiple ways to achieve this. 
 
 \section{Camera model}
+Knowledge of this section was primarily gained by the lecture slides of R. Mester \cite{computer_vision}.\bigskip
+
 As we work with 2-D images that are a representation of a 3-D world, there are some things to be said about the projection from 3-D to 2-D. The camera used and it's properties are important factors in determining motion.
 
 \subsection{Pinhole camera model}
-\autoref{fig:cammodel} shows the pinhole camera model. $C$ is the perspective center of the camera, the plane $E$ is the plane on which the 3-D world is projected upon. $H$ is called the principal point, it's the perpendicular projection of $C$ onto $E$, this axis is called the optical axis. $f$ is a constant based on the properties of the camera. 
+\autoref{fig:cammodel} shows the pinhole camera model. $C$ is the perspective center of the camera, the plane $E$ is the plane on which the 3-D world is projected upon. $H$ is called the principal point, it's the perpendicular projection of $C$ onto $E$, this axis is called the optical axis. $f$ is a constant based on the properties of the camera.\bigskip
 
-Take point $P$ in the 3-D world, it's coordinates in the can be described with respect to camera coordinate frame with $C$ as its center. When a picture is taken, the $P$ is projected on $E$ resulting in point $p$. $P$ with coordinates $X$, $Y$ and $Z$ is transformed to $p$ with coordinates $x$, $y$ and $z$. $z$ always equals $f$ as axis $Y_3$ is perpendicular to $E$.
-
-We need a way to describe the relationship between $P$ and $p$, the transformation between camera coordinates and image coordinates.
+Take point $P$ in the 3-D world, it's coordinates in the can be described with respect to camera coordinate frame with $C$ as its center. When a picture is taken, the $P$ is projected on $E$ resulting in point $p$. $P$ with coordinates $X$, $Y$ and $Z$ is transformed to $p$ with coordinates $x$, $y$ and $z$. $z$ always equals $f$ as axis $Y_3$ is perpendicular to $E$.\bigskip
 
 \begin{figure}
     \centering
@@ -131,6 +131,135 @@ We need a way to describe the relationship between $P$ and $p$, the transformati
     \caption{Pinhole camera model}
     \label{fig:cammodel}
 \end{figure}
+
+We need a way to describe the relationship between $P$ and $p$, the transformation from real world coordinates to camera coordinates. (It is important to note that the next equations are only valid when all the pairs of entities are measured in the same length entities). Given point $P$ with coordinates $(X, Y, Z)^T$ and point $p$ with coordinate $(x, y, z)$ the following relation can be found using the law of similar triangles: 
+\begin{equation}
+    \frac{x}{X} = \frac{z}{Z} = \frac{f}{Z}
+\end{equation}
+\begin{equation}
+    \frac{y}{Y} = \frac{z}{Z} = \frac{f}{Z}
+\end{equation}
+Rewriting the equations above, we get the following coordinates for point $\vp$:
+\begin{equation}
+    x = f\frac{X}{Z}
+\end{equation}
+\begin{equation}
+    y = f\frac{Y}{Z}
+\end{equation}
+However, these are not linear equations of projection. To keep working with linear equations as long as possible for simplicity, we us an extended vector: 
+\begin{equation}\label{eq:exvec}
+    \begin{pmatrix}
+        x \\ y
+    \end{pmatrix} \rightarrow 
+    \begin{pmatrix}
+        X \\ Y \\ Z/f
+    \end{pmatrix}
+\end{equation}
+To get the original vector $(x, y)^T$ from $(X, Y, Z/f)^T$ we introduce the projection operator 'Proj':
+\begin{equation}
+    Proj\begin{pmatrix}
+        a \\ b \\ c
+    \end{pmatrix} :=
+    \begin{pmatrix}
+        a/c \\ b/c
+    \end{pmatrix}
+\end{equation}
+So the projection from real word coordinates to camera coordinates can be written as follows:
+\begin{equation}\label{eq:projection}
+    \begin{pmatrix}
+        x \\ y
+    \end{pmatrix} = Proj
+    \begin{pmatrix}
+        X \\ Y \\ Z/f
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        f\frac{X}{Z} \\[0.25cm] f\frac{Y}{Z}
+    \end{pmatrix}
+\end{equation}
+This projection operator has an important property: Vectors upon which the projection operator Proj(.) is to be applied may be multiplied by arbitrary factors $\alpha\neq 0$ without changing the result of the projection operation. Proof can be found in the lecture slides of R. Mester \cite{computer_vision}.\bigskip
+
+The vector on the right hand side of \autoref{eq:exvec} can be rewritten as follows:
+\begin{equation}
+    \begin{pmatrix}
+        X \\ Y \\ Z/f
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        1 & 0 & 0\\ 
+        0 & 1 & 0\\ 
+        0 & 0 & 1/f
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z
+    \end{pmatrix}
+\end{equation}
+Using the property previously discussed of the projection operator which we will use on the vector $(X, Y, Z/f)^T$ we can multiply the vector with factor $f$:
+\begin{equation}
+    f\begin{pmatrix}
+        X \\ Y \\ Z/f
+    \end{pmatrix} = f
+    \begin{pmatrix}
+        1 & 0 & 0\\ 
+        0 & 1 & 0\\ 
+        0 & 0 & 1/f
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z
+    \end{pmatrix}
+\end{equation}
+\begin{equation}
+    = \begin{pmatrix}
+        f & 0 & 0\\ 
+        0 & f & 0\\ 
+        0 & 0 & 1
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z
+    \end{pmatrix}   
+\end{equation} 
+So \autoref{eq:projection} can be written as
+\begin{equation}\label{eq:projfull}
+    \begin{pmatrix}
+        x \\ y
+    \end{pmatrix} = Proj\left[
+    \begin{pmatrix}
+        f & 0 & 0\\ 
+        0 & f & 0\\ 
+        0 & 0 & 1
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z
+    \end{pmatrix} \right]
+\end{equation}
+To avoid the use of the projection operator, we could rewrite \autoref{eq:projfull} can be rewritten like this:
+\begin{equation}
+    k
+    \begin{pmatrix}
+        x \\ y \\ 1
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        f & 0 & 0\\ 
+        0 & f & 0\\ 
+        0 & 0 & 1
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z
+    \end{pmatrix}
+\end{equation}
+By expressing the point $P$ as a homogeneous vector $(X, Y, Z, 1)^T$ we get the following:
+\begin{equation}
+    k
+    \begin{pmatrix}
+        x \\ y \\ 1
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        f & 0 & 0 & 0\\ 
+        0 & f & 0 & 0\\ 
+        0 & 0 & 1 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z \\ 1
+    \end{pmatrix}
+\end{equation}
 
 \section{Motion estimation}
 Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint $\MX = [X_1, X_2, X_3]^T$ that has been matched to keypoint $\MX' = [X_1', X_2', X_3']^T$. The movement of this keypoint can be described as follows: 
