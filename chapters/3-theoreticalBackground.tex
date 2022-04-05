@@ -115,6 +115,23 @@ Rublee et al.\cite{6126544} is the perfect paper for a more detailed explanation
 % \section{Visual Odometry}
 % Visual Odometry (VO) is a process that calculates the motion (rotation and translation) of a body based on the images of a single or multiple cameras attached to the body. There are multiple ways to achieve this. 
 
+\section{Camera model}
+As we work with 2-D images that are a representation of a 3-D world, there are some things to be said about the projection from 3-D to 2-D. The camera used and it's properties are important factors in determining motion.
+
+\subsection{Pinhole camera model}
+\autoref{fig:cammodel} shows the pinhole camera model. $C$ is the perspective center of the camera, the plane $E$ is the plane on which the 3-D world is projected upon. $H$ is called the principal point, it's the perpendicular projection of $C$ onto $E$, this axis is called the optical axis. $f$ is a constant based on the properties of the camera. 
+
+Take point $P$ in the 3-D world, it's coordinates in the can be described with respect to camera coordinate frame with $C$ as its center. When a picture is taken, the $P$ is projected on $E$ resulting in point $p$. $P$ with coordinates $X$, $Y$ and $Z$ is transformed to $p$ with coordinates $x$, $y$ and $z$. $z$ always equals $f$ as axis $Y_3$ is perpendicular to $E$.
+
+We need a way to describe the relationship between $P$ and $p$, the transformation between camera coordinates and image coordinates.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/camera_model.jpg}
+    \caption{Pinhole camera model}
+    \label{fig:cammodel}
+\end{figure}
+
 \section{Motion estimation}
 Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint $\MX = [X_1, X_2, X_3]^T$ that has been matched to keypoint $\MX' = [X_1', X_2', X_3']^T$. The movement of this keypoint can be described as follows: 
 
@@ -454,18 +471,4 @@ This indicates the rotation is a pure rotation around an axis through the origin
 \begin{equation*}
     \MR = (\frac{1}{\lambda_1})\MA
 \end{equation*}
-In this case, it is not possible to determine translation vector $\vt$ and the normal vector $(a, b, c)^T$ as there is not translation.
-
-
-\section{Camera model}
-As we work with 2-D images that are a representation of a 3-D world, there are some things to be said about the projection from 3-D to 2-D. The camera used and it's properties are important factors in determining motion.
-
-\subsection{Pinhole camera model}
-\autoref{fig:cammodel} shows the pinhole camera model. $C$ is the perspective center of the camera, the plane $E$ is the plane on which the 3-D world is projected upon. $H$ is called the principal point, it's the perpendicular projection of $C$ onto $E$, this axis is called the optical axis. $f$ is a constant based on the properties of the camera.
-
-\begin{figure}
-    \centering
-    \includegraphics[width=1\textwidth]{figures/camera_model.png}
-    \caption{Pinhole camera model}
-    \label{fig:cammodel}
-\end{figure}
+In this case, it is not possible to determine translation vector $\vt$ and the normal vector $(a, b, c)^T$ as there is no translation.
