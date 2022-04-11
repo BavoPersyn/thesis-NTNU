@@ -246,7 +246,7 @@ To avoid the use of the projection operator, we could rewrite \autoref{eq:projfu
     \end{pmatrix}
 \end{equation}
 By expressing the point $P$ as a homogeneous vector $(X, Y, Z, 1)^T$ we get the following:
-\begin{equation}
+\begin{equation}\label{eq:homproj}
     k
     \begin{pmatrix}
         x \\ y \\ 1
@@ -260,6 +260,89 @@ By expressing the point $P$ as a homogeneous vector $(X, Y, Z, 1)^T$ we get the 
         X \\ Y \\ Z \\ 1
     \end{pmatrix}
 \end{equation}
+\autoref{eq:homproj} shows how to go from the homogeneous real world coordinates, where the origin is the perspective center of the camera $C$, to the camera coordinates, where the origin is the principal point $H$.\bigskip
+
+When working with pictures however, points are pixels on a grid with the origin in the top left corner of the image. So the the points in camera coordinates need to be transformed to image coordinates. Since these coordinate systems are in the same plane and have the same directions, this transformation is a simple translation. This means that \autoref{eq:homproj} can be rewritten, adding the translation like this:
+
+\begin{equation}\label{eq:improj}
+    k
+    \begin{pmatrix}
+        x \\ y \\ 1
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        f & 0 & h_x & 0\\ 
+        0 & f & h_y & 0\\ 
+        0 & 0 & 1 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z \\ 1
+    \end{pmatrix}
+\end{equation}
+As stated before, when working with these equations, all entities should be measured in the same length entities. For now, this is not the case, $f$ is a value commonly measured in millimeters and image coordinates are measured in pixels. This means that \autoref{eq:improj} is not valid using the values we currently have for $f$ and $H$.\bigskip
+
+To solve this problem, we should transform one of the units to the other unit's length entity. As we're primarily working with images, converting everything to pixels is the best way.\bigskip
+
+To do this, we look at the side view of the camera model, as seen in \textbf{Figure FIGURE}. The Field of View (FOV) is a value directly related to $f$ and can be found in the data sheet from the camera that is used (the subscript H and V denote the horizontal and vertical FOV respectively). To calculate the height of the image, we can use basic trigonometry. In a right-angled triangle the tangent of a corner is equal to the length of the opposite side divided by the length of the adjacent side, in our case this means:
+\begin{equation}
+    tan(FOV_V/2) = \frac{h/2}{f}
+\end{equation}\label{eq:fovv}
+solving for $h$:
+\begin{equation}
+    h = 2f*tan(FOV_V/2)
+\end{equation}
+Analogous, we can find the width $w$ of the image like this:
+\begin{equation}\label{eq:fovh}
+    w = 2f*tan(FOV_H/2)
+\end{equation}
+
+We know the dimensions of the image we capture in pixels. Solving \autoref{eq:fovv} and \autoref{eq:fovh} for $f$ we find the following equations:
+\begin{equation}
+    f_x = \frac{h}{2tan(FOV_V/2}
+\end{equation}
+\begin{equation}
+    f_y = \frac{w}{2tan(FOV_V/2}
+\end{equation}
+Using these values, we define the following $3\times3$ matrix $\MK$ as the \textit{intrinsic parameters}:
+\begin{equation}
+    \MK = \begin{pmatrix}
+        f_x & 0 & h_x \\
+        0 & f_y & h_y \\
+        0 & 0 & 1
+    \end{pmatrix}
+\end{equation}
+These intrinsic parameters are related to a certain camera used. The projection from real world coordinates to the image coordinates (in homogeneous coordinates) can then be expressed as
+\begin{equation}
+    k\begin{pmatrix}
+        x_{img}\\y_{img}\\1
+    \end{pmatrix} = \begin{pmatrix}
+        f_x & 0 & h_x & 0\\
+        0 & f_y & h_y & 0\\
+        0 & 0 & 1 & 0
+    \end{pmatrix}\begin{pmatrix}
+        X \\ Y \\ Z \\ 1
+    \end{pmatrix}
+\end{equation}
+\begin{equation*}
+    = \begin{pmatrix}
+        f_x & 0 & h_x \\
+        0 & f_y & h_y \\
+        0 & 0 & 1
+    \end{pmatrix}
+    \begin{pmatrix}
+        1 & 0 & 0 & 0\\
+        0 & 1 & 0 & 0\\
+        0 & 0 & 1 & 0\\
+    \end{pmatrix}
+    \begin{pmatrix}
+        X \\ Y \\ Z \\ 1
+    \end{pmatrix}
+\end{equation*}
+written more compactly:
+\begin{equation}
+    k\vy = \MK \biggl(\MI \lvert \vnull\biggr)\vq_c
+\end{equation}
+
+The point $\vq_c$ is expressed in the coordinate system with the principal axis of the camera pointing straight down the $X_z$-axis. At the origin of this Euclidean coordinate system, the camera is located.
 
 \section{Motion estimation}
 Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint $\MX = [X_1, X_2, X_3]^T$ that has been matched to keypoint $\MX' = [X_1', X_2', X_3']^T$. The movement of this keypoint can be described as follows: 
@@ -318,7 +401,7 @@ These nine essential elements are not all independent due to the fact that  $\ME
 \begin{equation}
     \MX \cdot (\vt \times \MR\MX) = 0
 \end{equation}
-because $(\vt \times \MR\MX$ is orthogonal to this plane. From this, it follows that 
+because $\vt \times \MR\MX$ is orthogonal to this plane. From this, it follows that 
 \begin{equation} \label{eq:2}
     \MX'^T\ME\MX = 0
 \end{equation}
