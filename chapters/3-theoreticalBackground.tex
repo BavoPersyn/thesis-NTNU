@@ -294,7 +294,12 @@ Analogous, we can find the width $w$ of the image like this:
 \begin{equation}\label{eq:fovh}
     w = 2f*tan(FOV_H/2)
 \end{equation}
-
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/camera_model.jpg}
+    \caption{Pinhole camera model}
+    \label{fig:cammodel}
+\end{figure}
 We know the dimensions of the image we capture in pixels. Solving \autoref{eq:fovv} and \autoref{eq:fovh} for $f$ we find the following equations:
 \begin{equation}
     f_x = \frac{h}{2tan(FOV_V/2}
