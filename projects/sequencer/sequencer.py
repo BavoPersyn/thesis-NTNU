@@ -203,6 +203,7 @@ class Sequencer:
                         break
                     elif k == ord('g'):
                         file.write(str(p1) + str(p2) + "\n")
+                file.close()
                 cv2.destroyWindow("test")
             elif key == ord('q'):
                 eof = True
