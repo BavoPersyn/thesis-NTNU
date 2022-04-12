@@ -1,5 +1,3 @@
-import math
-
 import cv2
 import collections
 import os
@@ -12,7 +10,9 @@ import random as rand
 
 class Sequencer:
     SEQ_NUM = 1
-    BUFSIZ = 2
+    BUF_SIZ = 2
+    FOV_V = 55
+    FOV_H = 94.4
 
     def __init__(self):
         self.y2 = 0
@@ -26,7 +26,7 @@ class Sequencer:
         self.mask = None
         self.black = None
         self.color = 0
-        self.orb = cv2.ORB_create(2000)
+        self.orb = cv2.ORB_create(8000)
         self.a = 0
         self.b = 0
         self.c = 0
@@ -34,7 +34,7 @@ class Sequencer:
         for base, dirs, files in os.walk('./Videos'):
             for directories in dirs:
                 self.SEQ_NUM += 1
-        self.imageFifo = collections.deque(maxlen=self.BUFSIZ)
+        self.imageFifo = collections.deque(maxlen=self.BUF_SIZ)
         self.folder = './Videos/sequence_'
 
     def show_menu(self):
@@ -103,13 +103,13 @@ class Sequencer:
 
     def read_images(self, sequence):
         bufindex = 0
-        index = self.BUFSIZ + 1
+        index = self.BUF_SIZ + 1
         self.read_info(sequence)
 
         self.folder = './Videos/sequence_' + str(sequence).zfill(3)
         self.create_mask(sequence)
 
-        self.fill_fifo(sequence, 1, self.BUFSIZ + 1)
+        self.fill_fifo(sequence, 1, self.BUF_SIZ + 1)
 
         title = 'Sequence' + str(sequence).zfill(3)
         cv2.imshow(title, self.imageFifo[0])
@@ -117,7 +117,7 @@ class Sequencer:
         cv2.setWindowTitle(title, title + ' Frame 1')
         eof = False
         while not eof:
-            cv2.setWindowTitle(title, title + ' Frame ' + str(index + bufindex - self.BUFSIZ))
+            cv2.setWindowTitle(title, title + ' Frame ' + str(index + bufindex - self.BUF_SIZ))
             key = cv2.waitKey(0)
             if key == ord('n'):
                 eof = self.add_next_image(sequence, index)
@@ -147,7 +147,7 @@ class Sequencer:
                 while not jump.isnumeric():
                     jump = input("Give (positive) number please: ")
                 jump = int(jump)
-                start = index - self.BUFSIZ + jump
+                start = index - self.BUF_SIZ + jump
                 if not os.path.exists(
                         self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(start).zfill(5) + '.jpg'):
                     print("Jump not possible, end of file would be reached")
@@ -163,7 +163,7 @@ class Sequencer:
                 while not jump.isnumeric():
                     jump = input("Give (positive) number please: ")
                 jump = int(jump)
-                start = index - self.BUFSIZ - jump
+                start = index - self.BUF_SIZ - jump
                 if start < 1:
                     print("Jump not possible, too far back.")
                     continue
@@ -183,6 +183,27 @@ class Sequencer:
                     cv2.imshow(title, out)
                     index += 1
                     key = cv2.waitKey(1)
+            elif key == ord('s'):
+                file = open(self.folder + "/points/IMG" + str(int(index - 2)).zfill(5) +
+                            "-" + str(int(index - 1)).zfill(5) + ".txt", "a")
+                (points1, points2) = self.detect_and_match()
+                im1 = self.reduce_contrast(self.imageFifo[-2])
+                im2 = self.reduce_contrast(self.imageFifo[-1])
+                goodpoints = []
+                for i in range(0, len(points1)):
+                    image = np.vstack((im1, im2))
+                    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+                    p1 = (int(points1[i][0]), int(points1[i][1]))
+                    p2 = (int(points2[i][0]), int(points2[i][1]) + self.height - self.horizon)
+                    cv2.circle(image, p1, radius=6, color=(255, 0, 0), thickness=3)
+                    cv2.circle(image, p2, radius=6, color=(255, 0, 0), thickness=3)
+                    cv2.imshow("test", image)
+                    k = cv2.waitKey(0)
+                    if k == ord('q'):
+                        break
+                    elif k == ord('g'):
+                        file.write(str(p1) + str(p2) + "\n")
+                cv2.destroyWindow("test")
             elif key == ord('q'):
                 eof = True
             else:
@@ -263,7 +284,7 @@ class Sequencer:
             point1 = (int(points[0][i][0]), int(points[0][i][1]))
             point2 = (int(points[1][i][0]), int(points[1][i][1]))
             color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-            img = cv2.circle(img, point1, radius=6, color=color, thickness=3)
+            img = cv2.circle(img, point2, radius=6, color=color, thickness=3)
             # img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
             # img = cv2.line(img, point1, point2, color=color, thickness=2)
             # horizon line
