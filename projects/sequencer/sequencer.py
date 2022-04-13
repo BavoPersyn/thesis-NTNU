@@ -11,6 +11,8 @@ import random as rand
 class Sequencer:
     SEQ_NUM = 1
     BUF_SIZ = 2
+    HOR_CELLS = 20
+    VER_CELLS = 10
     FOV_V = 55
     FOV_H = 94.4
 
@@ -100,6 +102,23 @@ class Sequencer:
             + '.jpg')
         self.imageFifo.appendleft(self.process_image(self.buffer))
         return False
+
+    def bucket(self, points):
+        cells = [[[0, 0]] * self.HOR_CELLS] * self.VER_CELLS
+        filled = 0
+        full = self.HOR_CELLS * self.VER_CELLS
+        points1, points2 = points[0], points[1]
+        b = self.width / self.HOR_CELLS
+        h = (self.height - self.horizon) / self.VER_CELLS
+        for point in points1:
+            x, y = int(point[0] / b), int(point[1] / h)
+            if all(v == 0 for v in cells[y][x]):
+                cells[y][x] = np.array(point)
+                filled += 1
+            if filled == full:
+                break
+        cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
+        return cells
 
     def read_images(self, sequence):
         bufindex = 0
@@ -205,6 +224,12 @@ class Sequencer:
                         file.write(str(p1) + str(p2) + "\n")
                 file.close()
                 cv2.destroyWindow("test")
+            elif key == ord('t'):
+                points = self.detect_and_match()
+                cells = self.bucket(points)
+
+                out = self.show_image([cells, cells], self.imageFifo[0])
+                cv2.imshow(title, out)
             elif key == ord('q'):
                 eof = True
             else:
@@ -222,7 +247,7 @@ class Sequencer:
         self.horizon = int(info.readline().split(' ')[-1])
         self.principal_point = (int(self.width / 2), int(self.height / 2))
         self.y2 = int(info.readline().split(' ')[-1])
-        self.a = self. horizon - self.y2
+        self.a = self.horizon - self.y2
         self.b = self.width
         self.c = 0
 
