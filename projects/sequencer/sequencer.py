@@ -232,8 +232,24 @@ class Sequencer:
             elif key == ord('t'):
                 kp1, des1 = self.dispose(self.pointsFifo[0])
                 kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
-                # matches = self.matcher.match(des1, des2)
-
+                des1 = des1.astype('uint8')
+                matches = self.matcher.match(des1, des2)
+                # points1 = np.zeros((len(matches), 2), dtype=np.float32)
+                # points2 = np.zeros((len(matches), 2), dtype=np.float32)
+                # for match in matches:
+                #     points1[j, :] = kp1[match.queryIdx].pt
+                #     points2[j, :] = kp2[match.trainIdx].pt
+                image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+                image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
+                for match in matches:
+                    point1 = (int(kp1[match.queryIdx][0]), int(kp1[match.queryIdx][1]))
+                    point2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
+                    color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+                    image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
+                    image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
+                    image = cv2.line(image, point1, point2, color=color, thickness=2)
+                    cv2.imshow(title, image)
+                    cv2.waitKey()
 
             elif key == ord('q'):
                 eof = True
