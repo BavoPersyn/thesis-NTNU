@@ -11,8 +11,8 @@ import random as rand
 class Sequencer:
     SEQ_NUM = 1
     BUF_SIZ = 2
-    HOR_CELLS = 20
-    VER_CELLS = 10
+    HOR_CELLS = 40
+    VER_CELLS = 20
     FOV_V = 55
     FOV_H = 94.4
 
@@ -32,6 +32,7 @@ class Sequencer:
         self.a = 0
         self.b = 0
         self.c = 0
+        self.pointsFifo = collections.deque(maxlen=self.BUF_SIZ)
         self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
         for base, dirs, files in os.walk('./Videos'):
             for directories in dirs:
@@ -88,6 +89,7 @@ class Sequencer:
             self.buffer = cv2.imread(self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(i)).zfill(5)
                                      + '.jpg')
             self.imageFifo.appendleft(self.process_image(self.buffer))
+            self.detect(self.imageFifo[0], 0)
 
     def add_next_image(self, sequence, index):
         # check whether end of file is reached
@@ -131,8 +133,9 @@ class Sequencer:
         self.fill_fifo(sequence, 1, self.BUF_SIZ + 1)
 
         title = 'Sequence' + str(sequence).zfill(3)
-        cv2.imshow(title, self.imageFifo[0])
-        self.detect_and_match()
+        points, descriptors = self.dispose(self.pointsFifo[0])
+        out = self.show_image((points, points), self.imageFifo[0])
+        cv2.imshow(title, out)
         cv2.setWindowTitle(title, title + ' Frame 1')
         eof = False
         while not eof:
@@ -142,9 +145,10 @@ class Sequencer:
                 eof = self.add_next_image(sequence, index)
                 if eof:
                     continue
-                # cv2.imshow(title, self.imageFifo[0])
-                points = self.detect_and_match()
-                out = self.show_image(points, self.imageFifo[0])
+                # points = self.detect_and_match()
+                self.detect(self.imageFifo[0], 0)
+                points, descriptors = self.dispose(self.pointsFifo[0])
+                out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
                 index += 1
             elif key == ord('p'):
@@ -156,9 +160,9 @@ class Sequencer:
                     self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5)
                     + '.jpg')
                 self.imageFifo.appendleft(self.process_image(self.buffer))
-                cv2.imshow(title, self.imageFifo[0])
-                points = self.detect_and_match()
-                out = self.show_image(points, self.imageFifo[0])
+                # points = self.detect_and_match()
+                points, descriptors = self.dispose(self.pointsFifo[0])
+                out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
                 index -= 1
             elif key == ord('j'):
@@ -174,8 +178,8 @@ class Sequencer:
                 index += jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                points = self.detect_and_match()
-                out = self.show_image(points, self.imageFifo[0])
+                points, descriptors = self.dispose(self.pointsFifo[0])
+                out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
             elif key == ord('b'):
                 jump = input("How many frames do you want to jump backwards? ")
@@ -189,16 +193,17 @@ class Sequencer:
                 index -= jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                points = self.detect_and_match()
-                out = self.show_image(points, self.imageFifo[0])
+                points, descriptors = self.dispose(self.pointsFifo[0])
+                out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
             elif key == ord(' '):
                 key = None
                 # cv2.setWindowTitle(title, title + ' playing.')
                 while not key == ord(' ') and not eof:
                     eof = self.add_next_image(sequence, index)
-                    points = self.detect_and_match()
-                    out = self.show_image(points, self.imageFifo[0])
+                    self.detect(self.imageFifo[0])
+                    points, descriptors = self.dispose(self.pointsFifo[0])
+                    out = self.show_image((points, points), self.imageFifo[0])
                     cv2.imshow(title, out)
                     index += 1
                     key = cv2.waitKey(1)
@@ -225,17 +230,43 @@ class Sequencer:
                 file.close()
                 cv2.destroyWindow("test")
             elif key == ord('t'):
-                points = self.detect_and_match()
-                cells = self.bucket(points)
+                points1 = self.dispose(self.pointsFifo[0])
+                points2 = self.pointsFifo[1][1]
+                print(len(points1), len(points2))
 
-                out = self.show_image([cells, cells], self.imageFifo[0])
-                cv2.imshow(title, out)
             elif key == ord('q'):
                 eof = True
             else:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def dispose(self, kp_des):
+        points = kp_des[0]
+        des = kp_des[1]
+        des_len = len(des[0])
+        cells = [[[0, 0]] * self.HOR_CELLS] * self.VER_CELLS
+        descriptors = [[0] * self.HOR_CELLS] * self.VER_CELLS
+        filled = 0
+        full = self.HOR_CELLS * self.VER_CELLS
+        b = self.width / self.HOR_CELLS
+        h = (self.height - self.horizon) / self.VER_CELLS
+        for i in range(len(points)):
+            point = points[i].pt
+            x, y = int(point[0] / b), int(point[1] / h)
+            in_mask = (self.mask[int(point[1])][int(point[0])] == [0., 0., 0.]).all()
+            above = (self.a * int(point[0]) + self.b * int(point[1]) + self.c) < 0
+            if in_mask or above:
+                continue
+            if all(v == 0 for v in cells[y][x]):
+                cells[y][x] = np.array(point)
+                descriptors[y][x] = des[i]
+                filled += 1
+            if filled == full:
+                break
+        cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
+        descriptors = descriptors
+        return cells, descriptors
 
     def read_info(self, sequence):
         info = open('Videos/sequence_' + str(sequence).zfill(3) + '/info.txt', 'r')
@@ -250,6 +281,13 @@ class Sequencer:
         self.a = self.horizon - self.y2
         self.b = self.width
         self.c = 0
+
+    def detect(self, image, pos=0):
+        kp, des = self.orb.detectAndCompute(image, None)
+        if pos == 0:
+            self.pointsFifo.appendleft((kp, des))
+        else:
+            self.pointsFifo.append((kp, des))
 
     def detect_and_match(self):
         # convert images in buffer to grayscale
