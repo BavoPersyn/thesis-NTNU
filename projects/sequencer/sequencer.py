@@ -230,9 +230,10 @@ class Sequencer:
                 file.close()
                 cv2.destroyWindow("test")
             elif key == ord('t'):
-                points1 = self.dispose(self.pointsFifo[0])
-                points2 = self.pointsFifo[1][1]
-                print(len(points1), len(points2))
+                kp1, des1 = self.dispose(self.pointsFifo[0])
+                kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
+                # matches = self.matcher.match(des1, des2)
+
 
             elif key == ord('q'):
                 eof = True
@@ -246,7 +247,7 @@ class Sequencer:
         des = kp_des[1]
         des_len = len(des[0])
         cells = [[[0, 0]] * self.HOR_CELLS] * self.VER_CELLS
-        descriptors = [[0] * self.HOR_CELLS] * self.VER_CELLS
+        descriptors = [[[-1]*des_len] * self.HOR_CELLS] * self.VER_CELLS
         filled = 0
         full = self.HOR_CELLS * self.VER_CELLS
         b = self.width / self.HOR_CELLS
@@ -260,12 +261,14 @@ class Sequencer:
                 continue
             if all(v == 0 for v in cells[y][x]):
                 cells[y][x] = np.array(point)
-                descriptors[y][x] = des[i]
+                descriptors[y][x] = np.array(des[i])
                 filled += 1
             if filled == full:
                 break
         cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
-        descriptors = descriptors
+        cells = cells[cells != [0, 0]].reshape(-1, 2)
+        descriptors = np.array(descriptors).reshape((self.HOR_CELLS * self.VER_CELLS, -1))
+        descriptors = descriptors[descriptors != [-1]*des_len].reshape(-1, des_len)
         return cells, descriptors
 
     def read_info(self, sequence):
