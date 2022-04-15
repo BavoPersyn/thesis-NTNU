@@ -248,26 +248,26 @@ class Sequencer:
                     point1 = (int(kp1[match.queryIdx][0]), int(kp1[match.queryIdx][1]))
                     point2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
                     # color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-                    # image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
-                    # image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
-                    # image = cv2.line(image, point1, point2, color=color, thickness=2)
-                    # cv2.imshow(title, image)
+                    color = (255, 0, 0)
+                    image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+                    image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
+                    image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
+                    image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
+                    image = cv2.line(image, point1, point2, color=color, thickness=2)
+                    cv2.imshow(title, image)
                     # cv2.waitKey()
                     patch1 = img1[point1[1] - self.WINDOW // 2:point1[1] + self.WINDOW // 2,
                              point1[0] - self.WINDOW // 2: point1[0] + self.WINDOW // 2]
                     patch2 = img2[point2[1] - self.WINDOW // 2:point2[1] + self.WINDOW // 2,
                              point2[0] - self.WINDOW // 2:point2[0] + self.WINDOW // 2]
-                    dim1 = patch1.shape
-                    dim2 = patch2.shape
 
-                    if dim1 != dim2:
-                        continue
-                    image = np.hstack((patch1, patch2))
-                    image = cv2.resize(image, (20*self.WINDOW, 10*self.WINDOW))
-                    cv2.imshow("patches", image)
+                    patches = np.hstack((patch1, patch2))
+                    patches = cv2.resize(patches, (20*self.WINDOW, 10*self.WINDOW))
+                    cv2.imshow("patches", patches)
                     cv2.waitKey(0)
                     if key == ord('q'):
                         break
+                cv2.destroyWindow("patches")
             elif key == ord('q'):
                 eof = True
             else:
