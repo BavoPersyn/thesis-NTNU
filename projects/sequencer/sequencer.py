@@ -15,6 +15,7 @@ class Sequencer:
     VER_CELLS = 20
     FOV_V = 55
     FOV_H = 94.4
+    WINDOW = 15
 
     def __init__(self):
         self.y2 = 0
@@ -241,16 +242,32 @@ class Sequencer:
                 #     points2[j, :] = kp2[match.trainIdx].pt
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
                 image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
+                img1 = self.imageFifo[0]
+                img2 = self.imageFifo[1]
                 for match in matches:
                     point1 = (int(kp1[match.queryIdx][0]), int(kp1[match.queryIdx][1]))
                     point2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
-                    color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-                    image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
-                    image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
-                    image = cv2.line(image, point1, point2, color=color, thickness=2)
-                    cv2.imshow(title, image)
-                    cv2.waitKey()
+                    # color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+                    # image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
+                    # image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
+                    # image = cv2.line(image, point1, point2, color=color, thickness=2)
+                    # cv2.imshow(title, image)
+                    # cv2.waitKey()
+                    patch1 = img1[point1[1] - self.WINDOW // 2:point1[1] + self.WINDOW // 2,
+                             point1[0] - self.WINDOW // 2: point1[0] + self.WINDOW // 2]
+                    patch2 = img2[point2[1] - self.WINDOW // 2:point2[1] + self.WINDOW // 2,
+                             point2[0] - self.WINDOW // 2:point2[0] + self.WINDOW // 2]
+                    dim1 = patch1.shape
+                    dim2 = patch2.shape
 
+                    if dim1 != dim2:
+                        continue
+                    image = np.hstack((patch1, patch2))
+                    image = cv2.resize(image, (20*self.WINDOW, 10*self.WINDOW))
+                    cv2.imshow("patches", image)
+                    cv2.waitKey(0)
+                    if key == ord('q'):
+                        break
             elif key == ord('q'):
                 eof = True
             else:
@@ -259,11 +276,13 @@ class Sequencer:
         return
 
     def dispose(self, kp_des):
+        kps = np.array([])
+        descs = np.array([])
         points = kp_des[0]
         des = kp_des[1]
         des_len = len(des[0])
         cells = [[[0, 0]] * self.HOR_CELLS] * self.VER_CELLS
-        descriptors = [[[-1]*des_len] * self.HOR_CELLS] * self.VER_CELLS
+        descriptors = [[[-1] * des_len] * self.HOR_CELLS] * self.VER_CELLS
         filled = 0
         full = self.HOR_CELLS * self.VER_CELLS
         b = self.width / self.HOR_CELLS
@@ -277,6 +296,8 @@ class Sequencer:
                 continue
             if all(v == 0 for v in cells[y][x]):
                 cells[y][x] = np.array(point)
+                kps = np.append(kps, point)
+                descs = np.append(descs, np.array(des[i]))
                 descriptors[y][x] = np.array(des[i])
                 filled += 1
             if filled == full:
@@ -284,8 +305,10 @@ class Sequencer:
         cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
         cells = cells[cells != [0, 0]].reshape(-1, 2)
         descriptors = np.array(descriptors).reshape((self.HOR_CELLS * self.VER_CELLS, -1))
-        descriptors = descriptors[descriptors != [-1]*des_len].reshape(-1, des_len)
-        return cells, descriptors
+        descriptors = descriptors[descriptors != [-1] * des_len].reshape(-1, des_len)
+        keypoints = kps.reshape(-1, 2)
+        descriptors = descs.reshape(-1, des_len)
+        return keypoints, descriptors
 
     def read_info(self, sequence):
         info = open('Videos/sequence_' + str(sequence).zfill(3) + '/info.txt', 'r')
