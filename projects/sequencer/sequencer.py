@@ -26,6 +26,7 @@ class Sequencer:
         self.channels = None
         self.width = None
         self.height = None
+        self.ego_car = None
         self.mask = None
         self.black = None
         self.color = 0
@@ -71,13 +72,15 @@ class Sequencer:
         self.show_menu()
 
     def create_mask(self, sequence):
-        mask = cv2.imread(self.folder + '/SEQ' + str(sequence).zfill(3) + 'BW.jpg')
-        (T, mask) = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
-        self.mask = mask / 255
+        ego_car = cv2.imread(self.folder + '/SEQ' + str(sequence).zfill(3) + 'BW.jpg')
+        (T, ego_car) = cv2.threshold(ego_car, 127, 255, cv2.THRESH_BINARY)
+        self.mask = cv2.cvtColor(ego_car, cv2.COLOR_BGR2GRAY)
+        self.ego_car = ego_car / 255
         if self.color == 0:
             self.black = [0]
         else:
             self.black = [0, 0, 0]
+        self.ego_car = self.ego_car[self.horizon:self.height, 0:self.width]
         self.mask = self.mask[self.horizon:self.height, 0:self.width]
 
     def fill_fifo(self, sequence, start, stop):
@@ -130,7 +133,6 @@ class Sequencer:
 
         self.folder = './Videos/sequence_' + str(sequence).zfill(3)
         self.create_mask(sequence)
-
         self.fill_fifo(sequence, 1, self.BUF_SIZ + 1)
 
         title = 'Sequence' + str(sequence).zfill(3)
@@ -298,7 +300,7 @@ class Sequencer:
         for i in range(len(points)):
             point = points[i].pt
             x, y = int(point[0] / b), int(point[1] / h)
-            in_mask = (self.mask[int(point[1])][int(point[0])] == [0., 0., 0.]).all()
+            in_mask = (self.ego_car[int(point[1])][int(point[0])] == [0., 0., 0.]).all()
             above = (self.a * int(point[0]) + self.b * int(point[1]) + self.c) < 0
             if in_mask or above:
                 continue
@@ -310,10 +312,10 @@ class Sequencer:
                 filled += 1
             if filled == full:
                 break
-        cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
-        cells = cells[cells != [0, 0]].reshape(-1, 2)
-        descriptors = np.array(descriptors).reshape((self.HOR_CELLS * self.VER_CELLS, -1))
-        descriptors = descriptors[descriptors != [-1] * des_len].reshape(-1, des_len)
+        # cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
+        # cells = cells[cells != [0, 0]].reshape(-1, 2)
+        # descriptors = np.array(descriptors).reshape((self.HOR_CELLS * self.VER_CELLS, -1))
+        # descriptors = descriptors[descriptors != [-1] * des_len].reshape(-1, des_len)
         keypoints = kps.reshape(-1, 2)
         descriptors = descs.reshape(-1, des_len)
         return keypoints, descriptors
@@ -333,7 +335,7 @@ class Sequencer:
         self.c = 0
 
     def detect(self, image, pos=0):
-        kp, des = self.orb.detectAndCompute(image, None)
+        kp, des = self.orb.detectAndCompute(image, self.mask)
         if pos == 0:
             self.pointsFifo.appendleft((kp, des))
         else:
@@ -344,8 +346,8 @@ class Sequencer:
         img1 = self.imageFifo[-1]
         img2 = self.imageFifo[-2]
         # compute keypoints and descriptors
-        kp1, des1 = self.orb.detectAndCompute(img1, None)
-        kp2, des2 = self.orb.detectAndCompute(img2, None)
+        kp1, des1 = self.orb.detectAndCompute(img1, self.mask)
+        kp2, des2 = self.orb.detectAndCompute(img2, self.mask)
         # match keypoints and sort them
         matches = self.matcher.match(des1, des2, None)
         matches = sorted(matches, key=lambda x: x.distance)
@@ -357,10 +359,9 @@ class Sequencer:
 
             p1 = (int(kp1[match.queryIdx].pt[0]), int(kp1[match.queryIdx].pt[1]))
             p2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
-            # Check if point is part of ego-car or above the horizon
-            in_mask = (self.mask[p1[1]][p1[0]] == [0., 0., 0.]).all() or (self.mask[p2[1]][p2[0]] == [0., 0., 0.]).all()
+            # Check if point is part above the horizon
             above = (self.a * p1[0] + self.b * p1[1] + self.c) < 0 or (self.a * p2[0] + self.b * p2[1] + self.c) < 0
-            if in_mask or above:
+            if above:
                 # at least one of the keypoints is part of the ego-car or above the horizon, this match will be ignored
                 continue
             good_matches.append(match)
@@ -391,7 +392,7 @@ class Sequencer:
         img = self.reduce_contrast(image)
         # converted to BGR so keypoints can be shown in color
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        img[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
+        img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
 
         # Show only the first 20, these are the best matches, bad matches make it unclear
         for i in range(len(points[0])):
