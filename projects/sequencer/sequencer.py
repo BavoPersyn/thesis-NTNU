@@ -230,54 +230,39 @@ class Sequencer:
                         break
                     elif k == ord('g'):
                         file.write(str(p1) + str(p2) + "\n")
+                    else:
+                        continue
                 file.close()
                 cv2.destroyWindow("test")
             elif key == ord('t'):
-                kp1, des1 = self.dispose(self.pointsFifo[0])
-                kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
-                des1 = des1.astype('uint8')
-                matches = self.matcher.match(des1, des2)
-                file = open(self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) +
-                            "-" + str(int(index - 1)).zfill(5) + '.txt', 'w')
+                good_matches = self.select_keypoints(index, title)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-                image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
-                img1 = self.imageFifo[0]
-                img2 = self.imageFifo[1]
-                good_matches = []
-                for match in matches:
-                    point1 = (int(kp1[match.queryIdx][0]), int(kp1[match.queryIdx][1]))
-                    point2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
-                    file.write(str(point1) + ', ' + str(point2) + '\n')
-                    color = (255, 0, 0)
-                    image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-                    image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
-                    image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
-                    image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
-                    image = cv2.line(image, point1, point2, color=color, thickness=2)
-                    cv2.imshow(title, image)
-                    # cv2.waitKey()
-                    patch1 = img1[point1[1] - self.WINDOW // 2:point1[1] + self.WINDOW // 2,
-                             point1[0] - self.WINDOW // 2: point1[0] + self.WINDOW // 2]
-                    patch2 = img2[point2[1] - self.WINDOW // 2:point2[1] + self.WINDOW // 2,
-                             point2[0] - self.WINDOW // 2:point2[0] + self.WINDOW // 2]
-
-                    patches = np.hstack((patch1, patch2))
-                    patches = cv2.resize(patches, (20*self.WINDOW, 10*self.WINDOW))
-                    cv2.imshow("patches", patches)
-                    k = cv2.waitKey(0)
-                    if k == ord('g'):
-                        good_matches.append((point1, point2))
-                    elif k == ord('q'):
-                        break
-                file.close()
-                cv2.destroyWindow("patches")
-                image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-                image[np.where((self.mask <= [0, 0, 0]).all(axis=2))] = self.black
+                image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+                color = (0, 255, 0)
                 for match in good_matches:
                     image = cv2.circle(image, match[0], radius=6, color=color, thickness=3)
                     image = cv2.circle(image, match[1], radius=6, color=color, thickness=3)
                     image = cv2.line(image, match[0], match[1], color=color, thickness=2)
                 cv2.imshow(title, image)
+            elif key == ord('h'):
+                filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(5) + '.txt'
+                if not path.exists(filename):
+                    good_matches = self.select_keypoints(index, title)
+                    good_matches = good_matches.reshape(len(good_matches), 4)
+                else:
+                    good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
+                points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
+                points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
+                i = 0
+                for match in good_matches:
+                    point1 = (match[0], match[1])
+                    point2 = (match[2], match[3])
+                    points1[i, :] = point1
+                    points2[i, :] = point2
+                    i += 1
+                print("calculating homography:")
+                h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+                print(h)
             elif key == ord('q'):
                 eof = True
             else:
