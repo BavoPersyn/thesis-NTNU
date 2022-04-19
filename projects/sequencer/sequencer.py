@@ -285,6 +285,46 @@ class Sequencer:
         cv2.destroyAllWindows()
         return
 
+    def select_keypoints(self, index, title):
+        filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + '-' \
+                   + str(int(index - 1)).zfill(5) + '.txt '
+        kp1, des1 = self.dispose(self.pointsFifo[0])
+        kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
+        des1 = des1.astype('uint8')
+        matches = self.matcher.match(des1, des2)
+        image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+        image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+        img1 = self.imageFifo[0]
+        img2 = self.imageFifo[1]
+        good_matches = []
+        for match in matches:
+            point1 = [int(kp1[match.queryIdx][0]), int(kp1[match.queryIdx][1])]
+            point2 = [int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1])]
+            color = (255, 0, 0)
+            image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+            image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+            image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
+            image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
+            image = cv2.line(image, point1, point2, color=color, thickness=2)
+            cv2.imshow(title, image)
+            # cv2.waitKey()
+            patch1 = img1[point1[1] - self.WINDOW // 2:point1[1] + self.WINDOW // 2,
+                     point1[0] - self.WINDOW // 2: point1[0] + self.WINDOW // 2]
+            patch2 = img2[point2[1] - self.WINDOW // 2:point2[1] + self.WINDOW // 2,
+                     point2[0] - self.WINDOW // 2:point2[0] + self.WINDOW // 2]
+
+            patches = np.hstack((patch1, patch2))
+            patches = cv2.resize(patches, (20 * self.WINDOW, 10 * self.WINDOW))
+            cv2.imshow("patches", patches)
+            k = cv2.waitKey(0)
+            if k == ord('g'):
+                good_matches.append([point1, point2])
+            elif k == ord('q'):
+                break
+        cv2.destroyWindow("patches")
+        np.savetxt(filename, np.array(good_matches).reshape(len(good_matches), 4), fmt='%i', delimiter=",")
+        return np.array(good_matches)
+
     def dispose(self, kp_des):
         kps = np.array([])
         descs = np.array([])
