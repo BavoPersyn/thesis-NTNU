@@ -6,6 +6,7 @@ import os.path
 from os import path
 import numpy as np
 import random as rand
+from math import tan
 
 
 class Sequencer:
@@ -34,6 +35,8 @@ class Sequencer:
         self.a = 0
         self.b = 0
         self.c = 0
+        self.K = np.zeros((3, 3))
+
         self.pointsFifo = collections.deque(maxlen=self.BUF_SIZ)
         self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
         for base, dirs, files in os.walk('./Videos'):
@@ -358,6 +361,11 @@ class Sequencer:
         self.a = self.horizon - self.y2
         self.b = self.width
         self.c = 0
+        self.K[0][0] = self.height / (2 * tan(self.FOV_V / 2))
+        self.K[1][1] = self.width / (2 * tan(self.FOV_H / 2))
+        self.K[0][2] = self.principal_point[0]
+        self.K[1][2] = self.principal_point[1]
+        self.K[2][2] = 1
 
     def detect(self, image, pos=0):
         kp, des = self.orb.detectAndCompute(image, self.mask)
