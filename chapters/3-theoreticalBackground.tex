@@ -4,7 +4,7 @@
 
 \section{Keypoint detection}
 
-\subsection{What are keypoints}
+\subsection{What are keypoints?}
 According to Trucco \& Verri (1998) \cite{book} a local keypoint is defined as a local, meaningful, detectable part of an image. In the following, the term keypoint will be used for local keypoint. A keypoint is a local feature of an image, a part with some properties that differentiates it from other parts of the image. By meaningful, they mean that the feature is associated to interesting scene elements such as sharp intensity variations created by the contours of the objects in the scene. To be detectable they state that location algorithms must exist, if not, a keypoint would be of no use.
 
 \subsection{Keypoint Detection}
@@ -115,15 +115,13 @@ Rublee et al.\cite{6126544} is the perfect paper for a more detailed explanation
 % \section{Visual Odometry}
 % Visual Odometry (VO) is a process that calculates the motion (rotation and translation) of a body based on the images of a single or multiple cameras attached to the body. There are multiple ways to achieve this. 
 
-\section{Camera model}
-Knowledge of this section was primarily gained by the lecture slides of R. Mester \cite{computer_vision}.\bigskip
-
-As we work with 2-D images that are a representation of a 3-D world, there are some things to be said about the projection from 3-D to 2-D. The camera used and it's properties are important factors in determining motion.
+\section{Camera model}\footnote{Knowledge of this section was primarily gained by the lecture slides of R. Mester \cite{computer_vision}.}
+As we work with 2-D images that are a representation of a 3-D world, there are some things to be said about the projection from 3-D to 2-D. The camera used and its properties are important factors in determining motion.
 
 \subsection{Pinhole camera model}
-\autoref{fig:cammodel} shows the pinhole camera model. $C$ is the perspective center of the camera, the plane $E$ is the plane on which the 3-D world is projected upon. $H$ is called the principal point, it's the perpendicular projection of $C$ onto $E$, this axis is called the optical axis. $f$ is a constant based on the properties of the camera.\bigskip
+\autoref{fig:cammodel} shows the pinhole camera model. $C$ is the perspective center of the camera, the plane $E$ is the plane on which the 3-D world is projected upon. $H$ is called the principal point, it is the perpendicular projection of $C$ onto $E$, this axis is called the optical axis. $f$ is a constant based on the properties of the camera.\bigskip
 
-Take point $P$ in the 3-D world, it's coordinates in the can be described with respect to camera coordinate frame with $C$ as its center. When a picture is taken, the $P$ is projected on $E$ resulting in point $p$. $P$ with coordinates $X$, $Y$ and $Z$ is transformed to $p$ with coordinates $x$, $y$ and $z$. $z$ always equals $f$ as axis $Y_3$ is perpendicular to $E$.\bigskip
+Take point $P$ in the 3-D world, its coordinates can be described with respect to camera coordinate frame with $C$ as its center. When a picture is taken, the $P$ is projected on $E$ resulting in point $p$. $P$ with coordinates $X$, $Y$ and $Z$ is transformed to $p$ with coordinates $x$, $y$ and $z$. $z$ always equals $f$ as axis $Y_3$ is perpendicular to $E$.\bigskip
 
 \begin{figure}
     \centering
@@ -262,7 +260,7 @@ By expressing the point $P$ as a homogeneous vector $(X, Y, Z, 1)^T$ we get the 
 \end{equation}
 \autoref{eq:homproj} shows how to go from the homogeneous real world coordinates, where the origin is the perspective center of the camera $C$, to the camera coordinates, where the origin is the principal point $H$.\bigskip
 
-When working with pictures however, points are pixels on a grid with the origin in the top left corner of the image. So the the points in camera coordinates need to be transformed to image coordinates. Since these coordinate systems are in the same plane and have the same directions, this transformation is a simple translation. This means that \autoref{eq:homproj} can be rewritten, adding the translation like this:
+When working with pictures however, points are pixels on a grid with the origin in the top left corner of the image. So the the points in camera coordinates need to be transformed to image coordinates. Since these coordinate systems are in the same plane and have the same directions, this transformation is a simple translation (assuming both coordinates are given in pixels), whether or not with a minus sign. This means that \autoref{eq:homproj} can be rewritten, adding the translation like this:
 
 \begin{equation}\label{eq:improj}
     k
@@ -280,32 +278,32 @@ When working with pictures however, points are pixels on a grid with the origin 
 \end{equation}
 As stated before, when working with these equations, all entities should be measured in the same length entities. For now, this is not the case, $f$ is a value commonly measured in millimeters and image coordinates are measured in pixels. This means that \autoref{eq:improj} is not valid using the values we currently have for $f$ and $H$.\bigskip
 
-To solve this problem, we should transform one of the units to the other unit's length entity. As we're primarily working with images, converting everything to pixels is the best way.\bigskip
+To solve this problem, we should transform one of the units to the other unit's length entity. As we are primarily working with images, converting everything to pixels is the best way.\bigskip
 
-To do this, we look at the side view of the camera model, as seen in \textbf{Figure FIGURE}. The Field of View (FOV) is a value directly related to $f$ and can be found in the data sheet from the camera that is used (the subscript H and V denote the horizontal and vertical FOV respectively). To calculate the height of the image, we can use basic trigonometry. In a right-angled triangle the tangent of a corner is equal to the length of the opposite side divided by the length of the adjacent side, in our case this means:
+To do this, we look at the side view of the camera model, as seen in \autoref{fig:fov}. The Field of View (FOV) is a value directly related to $f$ and can be found in the data sheet from the camera that is used (the subscript H and V denote the horizontal and vertical FOV respectively). To calculate the height of the image, we can use basic trigonometry. In a right-angled triangle the tangent of a corner is equal to the length of the opposite side divided by the length of the adjacent side, in our case this means:
 \begin{equation}
-    tan(FOV_V/2) = \frac{h/2}{f}
+    \tan(FOV_V/2) = \frac{h/2}{f}
 \end{equation}\label{eq:fovv}
 solving for $h$:
 \begin{equation}
-    h = 2f*tan(FOV_V/2)
+    h = 2f*\tan(FOV_V/2)
 \end{equation}
 Analogous, we can find the width $w$ of the image like this:
 \begin{equation}\label{eq:fovh}
-    w = 2f*tan(FOV_H/2)
+    w = 2f*\tan(FOV_H/2)
 \end{equation}
 \begin{figure}
     \centering
-    \includegraphics[width=1\textwidth]{figures/camera_model.jpg}
-    \caption{Pinhole camera model}
-    \label{fig:cammodel}
+    \includegraphics[width=1\textwidth]{figures/field_of_view.jpg}
+    \caption{field of view (vertical)}
+    \label{fig:fov}
 \end{figure}
 We know the dimensions of the image we capture in pixels. Solving \autoref{eq:fovv} and \autoref{eq:fovh} for $f$ we find the following equations:
 \begin{equation}
-    f_x = \frac{h}{2tan(FOV_V/2}
+    f_x = \frac{h}{2\tan(FOV_V/2)}
 \end{equation}
 \begin{equation}
-    f_y = \frac{w}{2tan(FOV_V/2}
+    f_y = \frac{w}{2\tan(FOV_V/2)}
 \end{equation}
 Using these values, we define the following $3\times3$ matrix $\MK$ as the \textit{intrinsic parameters}:
 \begin{equation}
@@ -425,7 +423,7 @@ We want to obtain a relationship in terms of the image plane coordinates. To do 
     = 0
 \end{equation}
 
-This linear homogeneous equation, in terms of the nine essential parameters, has either no solution or infinitely many solutions. By setting one of these nine essential parameters to one in the equation above, we can solve it for the remaining eight essential parameters. The essential parameter set to one is used as a scale factor. It's important to note that because of scale ambiguity in perspective projection, translation can only be estimated up to a scale factor.
+This linear homogeneous equation, in terms of the nine essential parameters, has either no solution or infinitely many solutions. By setting one of these nine essential parameters to one in the equation above, we can solve it for the remaining eight essential parameters. The essential parameter set to one is used as a scale factor. It is important to note that because of scale ambiguity in perspective projection, translation can only be estimated up to a scale factor.
 
 \subsection{Estimation of the Essential Parameters}
 To estimate these essential parameters, \cite{tekalp} proposes three methods: a linear lest squares method, an optimisation method requiring at least eight keypoint matches and a nonlinear method where only five, six or seven keypoint matches are needed. We'll discuss the Linear Least Squares Method.\bigskip
@@ -662,7 +660,7 @@ with
     \delta = \pm\biggl(\frac{\lambda_1^2-\lambda_2^2}{\lambda_2^2-\lambda_3^2}\biggr)^\frac{1}{2}
 \end{equation*}
 \begin{equation*}
-    s = det(\MU) det(\MV)
+    s = \det{\MU} \det{\MV}
 \end{equation*}
 and $k$ is an arbitrary scale factor (either positive or negative). To resolve the scale ambiguity, $1/X_3 > 0$ is required for all points.
 
@@ -680,12 +678,12 @@ This indicates that the motion can be decomposed into a rotation around an axis 
     \end{pmatrix}^T = \frac{1}{k}\boldsymbol{v_3}
 \end{equation*}
 \begin{equation*}
-    s = det(\MU) det(\MV)
+    s = \det{\MU} \det{\MV}
 \end{equation*}
 Once again, $k$ is an arbitrary scale factor.
 \subsubsection{Multiplicity of singular values is 2: $\lambda_1 = \lambda_2 = \lambda_3$}
 This indicates the rotation is a pure rotation around an axis through the origin. Once again, there's a unique solution for the rotation matrix:
 \begin{equation*}
-    \MR = (\frac{1}{\lambda_1})\MA
+    \MR = \left(\frac{1}{\lambda_1}\right)\MA
 \end{equation*}
 In this case, it is not possible to determine translation vector $\vt$ and the normal vector $(a, b, c)^T$ as there is no translation.
