@@ -348,7 +348,7 @@ written more compactly:
 The point $\vq_c$ is expressed in the coordinate system with the principal axis of the camera pointing straight down the $X_z$-axis. At the origin of this Euclidean coordinate system, the camera is located.
 
 \section{Motion estimation}
-Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint $\MX = [X_1, X_2, X_3]^T$ that has been matched to keypoint $\MX' = [X_1', X_2', X_3']^T$. The movement of this keypoint can be described as follows: 
+Now that keypoints are detected and matched, the relation between these keypoints can be expressed as a Homography. The Homography is the transformation between the planes in the respective frames. Suppose we have keypoint on the image, then this keypoint corresponds with a point in the real world $\MX = (X_1, X_2, X_3)^T$ that has been matched to another keypoint corresponding to another real world point $\MX' = (X_1', X_2', X_3')^T$. The transformation of $X$ to $X'$ can be described as follows: 
 
 \begin{equation} \label{eq:1}
     \begin{pmatrix}
