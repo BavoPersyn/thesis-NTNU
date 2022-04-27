@@ -381,7 +381,7 @@ where $\MR$ is a $3 \times 3$ matrix describing the rotation and $\vt$ a vector 
 
 So it is clear that there is a relation between $\MH$ on the one hand and $\MR$ and $\vt$ on the other hand.\bigskip
 
-\subsection{Essential matrix}
+\subsection{Essential matrix}\label{ssec:essentialmat}
 OpenCV has a method \textit{findHomography} to find this Homography based on the keypoints detected and matched. We need to use this homography to compute rotation-matrix $\MR$ and translation-vector $\vt$. In \cite{improc} T. S. Huang proposed that with at least eight keypoint matches a two-step linear algorithm can be developed. To do this, intermediate values called essential parameters need to be estimated first. These essential parameters form a matrix $\ME$ called the essential matrix:
 \begin{equation}
     \ME = 
