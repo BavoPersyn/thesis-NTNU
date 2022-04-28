@@ -121,7 +121,7 @@ To get the rotation matrix $\MR$, we multiply the yawn, pitch and roll like this
   \end{pmatrix} 
 \end{equation*}
 
-\section{Determining motion}
+\section{Determining motion}\label{sec:determmot}
 We now have a way to describe motion in the form of a rotation matrix and a translation vector. To determine this motion, we need to have some corresponding points from each pose. Assuming we have these (we'll discuss in detail later how to get these) there are two cases, the general case where the keypoints can not all lie in one plane. However if this is the case, there's a second option to handle this. The difficulty in all this is that we are working with images, which are 2-D representations of a 3-D world. 
 
 \subsection{General case: points not in one plane}
@@ -146,9 +146,28 @@ The essential matrix maps a point in one image to an epipolar line in the other 
 \end{figure}
 
 \subsection{Special case: points in one plane}
-When all points lay in one plane, the general case with the essential matrix does not belong to the possibilities. Fortunately, there is another way to deal with this case. 
+When all points lay in one plane, the general case with the essential matrix does not belong to the possibilities. Fortunately, there is another way to deal with this case. To do this, we introduce the term Homography. \bigskip
 
-\section{Visual Odometry}
-To estimate the frame-to-frame motion of the racing car, footage from a camera mounted to the car is used. This process is called Visual Odometry. The changes motion induce in the images are being used to estimate that motion. Visual Odometry needs sufficient illumination in the environment, enough texture and sufficient overlap between the consecutive frames. In the following, we will break down the steps in this process.
+A homography relates the transformation between two planes up to a scaling factor. We will discuss the scale ambiguity later. A homography matrix is a $3\times3$ matrix with 8 degrees of freedom as we have an unknown scale factor.\bigskip
+
+If we have a planar surface $P = (x, y, 1)^T$, then after transforming this plane (by e.g. changing the camera angle) it will be transformed to $P' = (x', y', 1)^T$. The transformation from $P$ to $P'$ can be expressed using the homography matrix like this:
+\begin{equation}
+    s\begin{pmatrix}
+        x' \\ y' \\ 1
+    \end{pmatrix} = \MH \begin{pmatrix}
+        x \\ y \\ 1
+    \end{pmatrix}
+\end{equation}
+$s$ being the unknown scale factor. Note that we are using homogeneous coordinates instead of euclidean coordinates.\bigskip
+
+It is clear that it is possible to estimate a homography matrix if we have multiple corresponding points on both planar surfaces. This homography can then be decomposed into the rotation matrix, translation vector and normal vector. How to estimate the homography and how to decompose it will be discussed in detail later on.
+
+\subsection{Combining both}
+Using one of these does not have to exclude using the other. As the footage we will be using will have both points laying on a fixed planar surface (being the road surface) and points spread out in space, we can use the essential matrix and homography matrix complementary.
+
+\section{Point-to-point correspondences}
+In \autoref{sec:determmot} we talked about the need for point correspondences in consecutive frames to estimate either the essential or homography matrix in order to determine motion.\bigskip
+
+To look for point correspondences, we first need to look for recognisable points, so called keypoints.
 
 
