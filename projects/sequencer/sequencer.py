@@ -1,3 +1,4 @@
+import math
 import cv2
 import collections
 import os
@@ -7,7 +8,8 @@ from os import path
 import numpy as np
 import random as rand
 from math import tan
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 class Sequencer:
     SEQ_NUM = 1
@@ -36,6 +38,9 @@ class Sequencer:
         self.b = 0
         self.c = 0
         self.K = np.zeros((3, 3))
+        self.position = [0, 0, 0]
+        self.positions = np.array([self.position])
+        self.plot = plt.figure()
 
         self.pointsFifo = collections.deque(maxlen=self.BUF_SIZ)
         self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
@@ -256,16 +261,31 @@ class Sequencer:
                     good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
                 points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
+                pts1 = np.zeros((len(good_matches), 2), dtype=np.int32)
+                pts2 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 i = 0
                 for match in good_matches:
-                    point1 = (match[0], match[1])
-                    point2 = (match[2], match[3])
-                    points1[i, :] = point1
-                    points2[i, :] = point2
+                    points1[i, :] = self.cropped_to_original((match[0], match[1]))
+                    points2[i, :] = self.cropped_to_original((match[2], match[3]))
                     i += 1
-                print("calculating homography:")
-                h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-                print(h)
+                if i < 4:
+                    print("Not enough matches")
+                    continue
+                # print("Calculating Homography:")
+                H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+                # print(H)
+                # print("Decomposing Homography")
+                retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
+                # for i in range(retval):
+                #     print(self.rotationMatrixToEulerAngles(rotations[i]))
+                #     print(translations[i])
+                #     print(normals[i])
+                old_position = self.position
+                current_position = np.add(self.position, np.reshape(translations[0], (1, 3)))
+                self.positions = np.append(self.positions, current_position, axis=0)
+            elif key == ord('f'):
+                print(self.positions)
+                self.plot_positions()
             elif key == ord('q'):
                 eof = True
             else:
@@ -294,7 +314,7 @@ class Sequencer:
             image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
             image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
             image = cv2.line(image, point1, point2, color=color, thickness=2)
-            cv2.imshow(title, image)
+            cv2.imshow(title, cv2.resize(image, (int(self.width/1.25), int((self.height-self.horizon)/1.25))))
             # cv2.waitKey()
             patch1 = img1[point1[1] - self.WINDOW // 2:point1[1] + self.WINDOW // 2,
                      point1[0] - self.WINDOW // 2: point1[0] + self.WINDOW // 2]
@@ -439,7 +459,41 @@ class Sequencer:
             # img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
         return img
 
+    def cropped_to_original(self, coordinate):
+        return [coordinate[0], coordinate[1] + self.horizon]
+
+    def rotationMatrixToEulerAngles(self, rotation_matrix):
+        sy = math.sqrt(rotation_matrix[0, 0] * rotation_matrix[0, 0] + rotation_matrix[1, 0] * rotation_matrix[1, 0])
+
+        singular = sy < 1e-6
+
+        if not singular:
+            x = math.atan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
+            y = math.atan2(-rotation_matrix[2, 0], sy)
+            z = math.atan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
+        else:
+            x = math.atan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
+            y = math.atan2(-rotation_matrix[2, 0], sy)
+            z = 0
+
+        return np.array([x, y, z])
+
     def reduce_contrast(self, image):
         mapper = np.vectorize(lambda x: (x * 127) // 255 + 128)
         image = mapper(image).astype(np.uint8)
         return image
+
+    def plot_positions(self):
+        ax = self.plot.add_subplot(111, projection='3d')
+        xdata = np.array([])
+        ydata = np.array([])
+        zdata = np.array([])
+        for pos in self.positions:
+            xdata = np.append(xdata, pos[0])
+            ydata = np.append(ydata, pos[1])
+            zdata = np.append(zdata, pos[2])
+        xdata = np.append(xdata, 12)
+        ydata = np.append(ydata, 69)
+        zdata = np.append(zdata, 45)
+        ax.plot(xdata, ydata, zdata, color='b')
+        plt.show()
