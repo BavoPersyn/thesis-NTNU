@@ -168,6 +168,7 @@ Using one of these does not have to exclude using the other. As the footage we w
 \section{Point-to-point correspondences}
 In \autoref{sec:determmot} we talked about the need for point correspondences in consecutive frames to estimate either the essential or homography matrix in order to determine motion.\bigskip
 
-To look for point correspondences, we first need to look for recognisable points, so called keypoints.
+\subsection{Local image features}
+To look for point correspondences, we first need to look for recognisable points. A local image feature describes a small region of an image. It consists of a keypoint, which is the image coordinate of the image patch and a descriptor which describes the content of that patch.\bigskip
 
-
+Using a keypoint detector it is possible to find keypoints in an image. Keypoint description methods make it possible to describe the patch and compare keypoints across different images. In section \autoref{sec:keydet} we describe these in detail as well as the used keypoint detector and description methods.

@@ -1,2 +1,23 @@
 \section{Visual Odometry}
 To estimate the frame-to-frame motion of the racing car, footage from a camera mounted to the car is used. This process is called Visual Odometry. The changes motion induce in the images are being used to estimate that motion. Visual Odometry needs sufficient illumination in the environment, enough texture and sufficient overlap between the consecutive frames.
+
+The Homography is the transformation between the planes in the respective frames.
+
+ Also valid is this: 
+\begin{equation}
+    \begin{pmatrix}
+        X_1' \\
+        X_2' \\
+        X_3'
+    \end{pmatrix}
+    = \MH
+    \begin{pmatrix}
+        X_1 \\
+        X_2 \\
+        X_3
+    \end{pmatrix}.
+\end{equation} 
+
+So it is clear that there is a relation between $\MH$ on the one hand and $\MR$ and $\vt$ on the other hand.\bigskip
+
+OpenCV has a method \textit{findHomography} to find this Homography based on the keypoints detected and matched. We need to use this homography to compute rotation-matrix $\MR$ and translation-vector $\vt$.
