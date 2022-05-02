@@ -281,11 +281,14 @@ class Sequencer:
         for i in range(len(points)):
             point = (int(points[i].pt[0]), int(points[i].pt[1]))
             color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+            above = (self.a * int(point[0]) + self.b * int(point[1]) + self.c) < 0
+            if above:
+                continue
             img = cv2.circle(img, point, radius=6, color=color, thickness=3)
             # img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
             # img = cv2.line(img, point1, point2, color=color, thickness=2)
             # horizon line
-            # img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
+        img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
         cv2.imshow("unfiltered", img)
         cv2.waitKey(0)
 
