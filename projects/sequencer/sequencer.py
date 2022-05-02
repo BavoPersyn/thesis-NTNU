@@ -263,12 +263,31 @@ class Sequencer:
                 print("calculating homography:")
                 h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
                 print(h)
+            elif key == ord('u'):
+                self.test()
             elif key == ord('q'):
                 eof = True
             else:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def test(self):
+        img = self.reduce_contrast(self.imageFifo[0])
+        # converted to BGR so keypoints can be shown in color
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+        points = self.pointsFifo[0][0]
+        for i in range(len(points)):
+            point = (int(points[i].pt[0]), int(points[i].pt[1]))
+            color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+            img = cv2.circle(img, point, radius=6, color=color, thickness=3)
+            # img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
+            # img = cv2.line(img, point1, point2, color=color, thickness=2)
+            # horizon line
+            # img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
+        cv2.imshow("unfiltered", img)
+        cv2.waitKey(0)
 
     def select_keypoints(self, index, title):
         filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + '-' \
@@ -419,7 +438,7 @@ class Sequencer:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
 
-        # Show only the first 20, these are the best matches, bad matches make it unclear
+
         for i in range(len(points[0])):
             point1 = (int(points[0][i][0]), int(points[0][i][1]))
             point2 = (int(points[1][i][0]), int(points[1][i][1]))
