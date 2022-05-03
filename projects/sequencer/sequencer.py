@@ -245,12 +245,7 @@ class Sequencer:
                     image = cv2.line(image, match[0], match[1], color=color, thickness=2)
                 cv2.imshow(title, image)
             elif key == ord('h'):
-                filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(5) + '.txt'
-                if not path.exists(filename):
-                    good_matches = self.select_keypoints(index, title)
-                    good_matches = good_matches.reshape(len(good_matches), 4)
-                else:
-                    good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
+                good_matches = self.load_points(index, title)
                 points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 i = 0
@@ -263,6 +258,20 @@ class Sequencer:
                 print("calculating homography:")
                 h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
                 print(h)
+            elif key == ord('l'):
+                good_matches = self.load_points(index, title)
+                image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+                image = self.reduce_contrast(image)
+                image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+                for match in good_matches:
+                    point1 = (match[0], match[1])
+                    point2 = (match[2], match[3])
+                    image = cv2.circle(image, point1, radius=6, color=(255, 0, 0), thickness=3)
+                    image = cv2.circle(image, point2, radius=6, color=(255, 0, 0), thickness=3)
+                    image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
+
+                cv2.imshow(title, image)
+
             elif key == ord('u'):
                 self.test()
             elif key == ord('q'):
@@ -271,6 +280,16 @@ class Sequencer:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def load_points(self, index, title):
+        filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
+            5) + '.txt'
+        if not path.exists(filename):
+            good_matches = self.select_keypoints(index, title)
+            good_matches = good_matches.reshape(len(good_matches), 4)
+        else:
+            good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
+        return good_matches
 
     def test(self):
         img = self.reduce_contrast(self.imageFifo[0])
