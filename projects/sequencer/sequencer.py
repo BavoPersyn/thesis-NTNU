@@ -1,4 +1,3 @@
-import math
 import cv2
 import collections
 import os
@@ -254,12 +253,7 @@ class Sequencer:
                     image = cv2.line(image, match[0], match[1], color=color, thickness=2)
                 cv2.imshow(title, image)
             elif key == ord('h'):
-                filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(5) + '.txt'
-                if not path.exists(filename):
-                    good_matches = self.select_keypoints(index, title)
-                    good_matches = good_matches.reshape(len(good_matches), 4)
-                else:
-                    good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
+                good_matches = self.load_points(index, title)
                 points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 pts1 = np.zeros((len(good_matches), 2), dtype=np.int32)
@@ -287,12 +281,58 @@ class Sequencer:
             elif key == ord('f'):
                 print(self.positions)
                 self.plot_positions()
+            elif key == ord('l'):
+                good_matches = self.load_points(index, title)
+                image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+                image = self.reduce_contrast(image)
+                image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+                for match in good_matches:
+                    point1 = (match[0], match[1])
+                    point2 = (match[2], match[3])
+                    image = cv2.circle(image, point1, radius=6, color=(255, 0, 0), thickness=3)
+                    image = cv2.circle(image, point2, radius=6, color=(255, 0, 0), thickness=3)
+                    image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
+
+                cv2.imshow(title, image)
+
+            elif key == ord('u'):
+                self.test()
             elif key == ord('q'):
                 eof = True
             else:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def load_points(self, index, title):
+        filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
+            5) + '.txt'
+        if not path.exists(filename):
+            good_matches = self.select_keypoints(index, title)
+            good_matches = good_matches.reshape(len(good_matches), 4)
+        else:
+            good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
+        return good_matches
+
+    def test(self):
+        img = self.reduce_contrast(self.imageFifo[0])
+        # converted to BGR so keypoints can be shown in color
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+        points = self.pointsFifo[0][0]
+        for i in range(len(points)):
+            point = (int(points[i].pt[0]), int(points[i].pt[1]))
+            color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
+            above = (self.a * int(point[0]) + self.b * int(point[1]) + self.c) < 0
+            if above:
+                continue
+            img = cv2.circle(img, point, radius=6, color=color, thickness=3)
+            # img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
+            # img = cv2.line(img, point1, point2, color=color, thickness=2)
+            # horizon line
+        img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
+        cv2.imshow("unfiltered", img)
+        cv2.waitKey(0)
 
     def select_keypoints(self, index, title):
         filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + '-' \
@@ -448,7 +488,7 @@ class Sequencer:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
 
-        # Show only the first 20, these are the best matches, bad matches make it unclear
+
         for i in range(len(points[0])):
             point1 = (int(points[0][i][0]), int(points[0][i][1]))
             point2 = (int(points[1][i][0]), int(points[1][i][1]))

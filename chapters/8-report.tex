@@ -1,14 +1,5 @@
 \chapter{Approach to estimate vehicle motion}
 
-\section{Objectives}
-\subsection{Primary objectives}
-The goal is to build a software system, using computer vision algorithms. First of all, it should be able to estimate the frame-to-frame motion of a racing car and the momentary orientation of the camera with respect to the ground plane. Secondly, at any time, the system should be able to create a birds eye view map of the environment that is in front of the car, in particular the positions of the cones which are used to mark the drivable path.\bigskip 
-
-\subsection{Secondary objectives}
-When a good solution is found to these two problems, the system could be expanded and obstacles, side barriers etc. could be entered into the map previously mentioned. Based on the previous features of the system, two additional features could be added: reconstruction of the car's trajectory over time and building a global map from the instantaneous map.\bigskip
-
-These last two additional features are a nice addition to the primal goals, but will only be investigated once the primal goals are working properly.
-
 \section{Sequencer}
 First, we need a way to step through the footage of the race car efficiently. For this purpose, a sequencer is built, this sequencer takes footage from a camera mounted to a racing car. The footage from the camera is a video, to process this, each frame of the video is stored as a separate image. These images can be fed to the sequencer to process them. The sequencer takes 1 of these images at a time as input and stores it in a buffer. This image is converted into a grayscale image and cropped so the horizon is (as much as possible) out of the image. This converted image is then inserted into a FIFO of length N (right now, N is set at two). The two images in the FIFO are now ready for processing, the specifics of this processing will be discussed later. The visualisation component takes the images in the FIFO to visualise everything (keypoints, motion vectors...).\bigskip
 
@@ -116,3 +107,4 @@ For now an estimation suffices so we chose two points empirically. In \autoref{s
     \caption{Keypoints after filtering keypoints above the horizon}
     \label{fig:key_filtered}
 \end{figure}
+
