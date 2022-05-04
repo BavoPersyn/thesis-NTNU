@@ -256,8 +256,6 @@ class Sequencer:
                 good_matches = self.load_points(index, title)
                 points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
-                pts1 = np.zeros((len(good_matches), 2), dtype=np.int32)
-                pts2 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 i = 0
                 for match in good_matches:
                     points1[i, :] = self.cropped_to_original((match[0], match[1]))
@@ -303,6 +301,16 @@ class Sequencer:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def form_transformation_matrix(self, r, t):
+        T = np.zeros((4, 4))
+        T[3][3] = 1
+        for i in range(3):
+            for j in range(3):
+                T[i][j] = r[i][j]
+        for i in range(3):
+            T[i][3] = t[i]
+        return T
 
     def load_points(self, index, title):
         filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
