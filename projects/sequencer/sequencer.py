@@ -38,7 +38,8 @@ class Sequencer:
         self.b = 0
         self.c = 0
         self.K = np.zeros((3, 3))
-        self.position = [0, 0, 0]
+        self.position = np.array([0, 0, 0])
+        self.transformation = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         self.positions = np.array([self.position])
         self.plot = plt.figure()
 
