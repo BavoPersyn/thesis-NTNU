@@ -253,6 +253,7 @@ class Sequencer:
                     image = cv2.line(image, match[0], match[1], color=color, thickness=2)
                 cv2.imshow(title, image)
             elif key == ord('h'):
+                # Calculate homography and decompose it
                 good_matches = self.load_points(index, title)
                 points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
                 points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
@@ -269,17 +270,19 @@ class Sequencer:
                 # print(H)
                 # print("Decomposing Homography")
                 retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-                # for i in range(retval):
-                #     print(self.rotationMatrixToEulerAngles(rotations[i]))
-                #     print(translations[i])
-                #     print(normals[i])
-                old_position = self.position
-                current_position = np.add(self.position, np.reshape(translations[0], (1, 3)))
-                self.positions = np.append(self.positions, current_position, axis=0)
+                T = self.form_transformation_matrix(rotations[0], translations[0])
+                self.transformation = np.matmul(self.transformation,  T)
+                current_position = np.array([self.transformation[0][3],
+                                            self.transformation[1][3],
+                                            self.transformation[2][3]])
+                self.positions = np.append(self.positions, [current_position], axis=0)
+                print(self.positions)
             elif key == ord('f'):
+                # Shows 3d plot of movement so far
                 print(self.positions)
                 self.plot_positions()
             elif key == ord('l'):
+                # Load stored matches and show motion vectors
                 good_matches = self.load_points(index, title)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
                 image = self.reduce_contrast(image)
@@ -292,7 +295,6 @@ class Sequencer:
                     image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
 
                 cv2.imshow(title, image)
-
             elif key == ord('u'):
                 self.test()
             elif key == ord('q'):
@@ -541,8 +543,5 @@ class Sequencer:
             xdata = np.append(xdata, pos[0])
             ydata = np.append(ydata, pos[1])
             zdata = np.append(zdata, pos[2])
-        xdata = np.append(xdata, 12)
-        ydata = np.append(ydata, 69)
-        zdata = np.append(zdata, 45)
         ax.plot(xdata, ydata, zdata, color='b')
         plt.show()
