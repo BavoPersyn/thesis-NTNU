@@ -1,3 +1,4 @@
+import math
 import cv2
 import collections
 import os
@@ -40,7 +41,9 @@ class Sequencer:
         self.position = np.array([0, 0, 0])
         self.transformation = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         self.positions = np.array([self.position])
-        self.plot = plt.figure()
+        self.angles = np.array([[0, 0, 0]])
+        self.pos_plot = plt.figure()
+        self.angles_plot, self.angles_ax = plt.subplots()
 
         self.pointsFifo = collections.deque(maxlen=self.BUF_SIZ)
         self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
@@ -253,34 +256,22 @@ class Sequencer:
                     image = cv2.line(image, match[0], match[1], color=color, thickness=2)
                 cv2.imshow(title, image)
             elif key == ord('h'):
-                # Calculate homography and decompose it
-                good_matches = self.load_points(index, title)
-                points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
-                points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
-                i = 0
-                for match in good_matches:
-                    points1[i, :] = self.cropped_to_original((match[0], match[1]))
-                    points2[i, :] = self.cropped_to_original((match[2], match[3]))
-                    i += 1
-                if i < 4:
-                    print("Not enough matches")
-                    continue
-                # print("Calculating Homography:")
-                H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-                # print(H)
-                # print("Decomposing Homography")
-                retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-                T = self.form_transformation_matrix(rotations[0], translations[0])
-                self.transformation = np.matmul(self.transformation,  T)
-                current_position = np.array([self.transformation[0][3],
-                                            self.transformation[1][3],
-                                            self.transformation[2][3]])
-                self.positions = np.append(self.positions, [current_position], axis=0)
-                print(self.positions)
+                key = None
+                while not key == ord('h') and not eof:
+                    eof = self.add_next_image(sequence, index)
+                    exists = self.find_homography(index, title)
+                    if not exists:
+                        break
+                    out = self.show_image(None, self.imageFifo[0])
+                    self.plot_angles()
+                    cv2.imshow(title, out)
+                    index += 1
+                    key = cv2.waitKey(1)
             elif key == ord('f'):
                 # Shows 3d plot of movement so far
-                print(self.positions)
-                self.plot_positions()
+                # self.plot_positions()
+                # show angles so far
+                self.plot_angles()
             elif key == ord('l'):
                 # Load stored matches and show motion vectors
                 good_matches = self.load_points(index, title)
@@ -303,6 +294,34 @@ class Sequencer:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def find_homography(self, index, title):
+        # Calculate homography and decompose it
+        good_matches = self.load_points(index, title)
+        points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
+        points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
+        i = 0
+        for match in good_matches:
+            points1[i, :] = self.cropped_to_original((match[0], match[1]))
+            points2[i, :] = self.cropped_to_original((match[2], match[3]))
+            i += 1
+        if i < 4:
+            print("Not enough matches")
+            return False
+        # print("Calculating Homography:")
+        H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+        # print(H)
+        # print("Decomposing Homography")
+        retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
+        T = self.form_transformation_matrix(rotations[0], translations[0])
+        self.transformation = np.matmul(self.transformation, T)
+        current_position = np.array([self.transformation[0][3],
+                                     self.transformation[1][3],
+                                     self.transformation[2][3]])
+        self.positions = np.append(self.positions, [current_position], axis=0)
+        angles = self.rotationMatrixToEulerAngles(rotations[0])
+        self.angles = np.append(self.angles, [angles], axis=0)
+        return True
 
     def form_transformation_matrix(self, r, t):
         T = np.zeros((4, 4))
@@ -497,8 +516,8 @@ class Sequencer:
         # converted to BGR so keypoints can be shown in color
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
-
-
+        if points is None:
+            return img
         for i in range(len(points[0])):
             point1 = (int(points[0][i][0]), int(points[0][i][1]))
             point2 = (int(points[1][i][0]), int(points[1][i][1]))
@@ -535,7 +554,7 @@ class Sequencer:
         return image
 
     def plot_positions(self):
-        ax = self.plot.add_subplot(111, projection='3d')
+        ax = self.pos_plot.add_subplot(111, projection='3d')
         xdata = np.array([])
         ydata = np.array([])
         zdata = np.array([])
@@ -545,3 +564,16 @@ class Sequencer:
             zdata = np.append(zdata, pos[2])
         ax.plot(xdata, ydata, zdata, color='b')
         plt.show()
+
+    def plot_angles(self):
+        angles = np.transpose(self.angles)
+        phis = angles[0]
+        psis = angles[1]
+        thetas = angles[2]
+        x = np.array(range(len(phis)))
+        self.angles_ax.plot(x, phis, color='r')
+        self.angles_ax.plot(x, psis, color='g')
+        self.angles_ax.plot(x, thetas, color='b')
+        self.angles_plot.canvas.draw()
+        self.angles_plot.show()
+
