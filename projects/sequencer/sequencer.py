@@ -260,7 +260,7 @@ class Sequencer:
                 key = None
                 while not key == ord('h') and not eof:
                     eof = self.add_next_image(sequence, index)
-                    exists = self.find_homography(index, title)
+                    exists, = self.find_homography(index, title)
                     if not exists:
                         break
                     out = self.show_image(None, self.imageFifo[0])
@@ -290,12 +290,23 @@ class Sequencer:
                 cv2.imshow(title, image)
             elif key == ord('u'):
                 self.test()
+            elif key == ord('v'):
+                eof = self.add_next_image(sequence, index)
+                exists, H = self.find_homography(index, title)
+                if not exists:
+                    print("No homography found")
+                self.to_birds_eye_view(self.buffer, H)
             elif key == ord('q'):
                 eof = True
             else:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def to_birds_eye_view(self, image, h):
+        out = cv2.warpPerspective(image, h, (self.width, self.height))
+        cv2.imshow('birdseyview', out)
+        cv2.waitKey(0)
 
     def find_homography(self, index, title):
         # Calculate homography and decompose it
@@ -309,14 +320,14 @@ class Sequencer:
             i += 1
         if i < 4:
             print("Not enough matches")
-            return False
+            return False, None
         # print("Calculating Homography:")
         H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
         # print(H)
         # print("Decomposing Homography")
         retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
         self.update_transformations(rotations[0], translations[0])
-        return True
+        return True, H
 
     def find_essential(self, index, title):
         # Calculate homography and decompose it
