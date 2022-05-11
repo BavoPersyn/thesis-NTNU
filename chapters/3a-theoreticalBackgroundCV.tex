@@ -1,8 +1,174 @@
-\chapter{Theoretical Background}
+\chapter{Theoretical Foundations of Geometrical Computer Vision}\label{chap:theoretic_found}
 
 % In your case, it could for instance contain the math of camera models, the theory of feature point detection and matching, motion field models, in your case in particular the model of a moving plane, parameterization of motion in terms of rotation matrices and translation vectors, and how they are computed from a set of feature point correspondences 
 
-\section{Camera model}\footnote{Knowledge of this section was primarily gained by the lecture slides of R. Mester \cite{computer_vision}.}
+\section{Coordinate Frames}
+We are working with camera images, which are 2-D representations of points in a 3-D world. We also have different points of reference: in the real world, according to the camera etc. It is thus of utmost importance to define the coordinate frames we will be using to avoid confusion.\bigskip
+
+First of all, there is the image itself, the \newterm{image coordinate frame ICF}. This is a 2-D frame with x-axis and y-axis along the horizontal axis and vertical axis of the image respectively. The unit of these coordinates is measured in pixels and the center of the frame is at the top left of the image. The image frame is shown in \autoref{fig:im_frame}\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/image_frame.png}
+    \caption{Image frame}
+    \label{fig:im_frame}
+\end{figure}
+
+Secondly, there is the \newterm{vehicle coordinate frame VCF}. This is a right-handed 3-D coordinate system. The center of the frame is located at the bottom center of the car. The x-axis is pointing right, the y-axis is pointing down and the z-axis is leaving the car perpendicular to the car in the direction of the front of the car. \bigskip
+
+Closely related, we have the \newterm{camera coordinate frame CCF}. This is a similar 3-D coordinate system, but as I stated before, the camera is mounted slightly tilted at the side of the car. With respect to the camera, the x-axis is once again pointing right, the y-axis pointing down and the z-axis leaving the camera perpendicular to the camera in the direction of the view. These two coordinate frames are shown in \autoref{fig:cam_frame}, with the cube being an abstract way of showing the car.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/camera_frame.png}
+    \caption{Vehicle and camera coordinate frame}
+    \label{fig:cam_frame}
+\end{figure}
+
+The fourth and last coordinate frame is the \newterm{world coordinate frame WCF}. This is also a right-handed 3-D coordinate system and to keep things simple, the center is located at center of the VCF at frame 1. The difference is that the frame is rotated around the z-axis so the y-axis is pointing upwards and the x-axis is pointing left. See \autoref{fig:world_frame} where the cube is once again the car in its initial position.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/world_frame.png}
+    \caption{World coordinate frame}
+    \label{fig:world_frame}
+\end{figure}
+
+As we are working with three different coordinate frames, it's important to know how to transfer points from one frame to another. We'll discuss this at length in a later section.
+
+\subsection{Relation of different coordinate frames}
+Working with different coordinate frames can be tricky, to avoid any confusion I will define the transformation equations between the different coordinate frames. 
+
+\subsubsection{VCF to CCF}
+The first thing we have to do is define how the center of the VCF is translated to the center of the CCF, therefore we define $\vt_{VC}$ as the translation from the VCF to the CCF. Looking at \autoref{fig:cam_frame} from the point of view of the VCF, the center is translated along the x-axis to the right thus being positive, along the y-axis to the left thus being negative. This is of course all depending on where the camera is mounted exactly, but from \autoref{fig:footage_example} it is clear that in our case the camera is mounted on the upper right side of the car. Whether the camera is moved along the z-axis and in which direction is unknown. This gives the following definition:
+\begin{equation}
+    \vt_{VC} = \begin{pmatrix}
+         t_{VC,1} \\ -t_{VC,2} \\ t_{VC,3}
+     \end{pmatrix} 
+\end{equation}
+
+Secondly, we need to have a look at the rotation, how a rotation matrix works is explained in \autoref{ssec:rotmat}. The rotation from VCF to CCF is defined like this:
+
+\begin{equation}
+    \MR_{VC} = \MR_z(\phi_{VC})\cdot\MR_y(\psi_{VC})\cdot\MR_x(\theta_{VC})
+\end{equation}
+
+Thus, to transform a point $P_V = (P_{V1}, P_{V2}, P_{V3})^T$ in the VCF to it's corresponding coordinates $P_C = (P_{C1}, P_{C2}, P_{C3})^T$ in the CCF, the following transformation is done:
+\begin{equation}
+    \begin{pmatrix}
+        P_{C1} \\ P_{C2}\\ P_{C3}
+    \end{pmatrix} = \begin{pmatrix}
+        P_{V1} \\ P_{V2}\\ P_{V3}
+    \end{pmatrix} + \begin{pmatrix}
+         t_{VC,1} \\ -t_{VC,2} \\ t_{VC,3}
+     \end{pmatrix} 
+\end{equation}
+
+\section{Motion Parameters}
+Every 3-D rigid motion can be decomposed into two components, each of which have three degrees of freedom. The displacement in this plane is called the translation and can be expressed by the translation vector $\vt$. The second parameter is the rotation, this can be expressed with the rotation matrix $\MR$. Additionally, when a motion is happening on a flat surface we can define this plane uniquely, the normal vector $\vn$ does this.\bigskip
+
+\subsection{Rotation Matrix}\label{ssec:rotmat}
+A 3-D rotation can always be described by a sequence of 3 partial rotations, a yaw, a pitch and a roll. It is important to note that the decomposition from rotation matrix to its components is done according to a convention. This convention states the order in which the rotations are done, if these are switched, the decomposition will be wrong. The convention I will use is as follows: pitch, yaw, roll, \autoref{eq:rotation} shows this.\bigskip
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/yaw_pitch_roll.png}
+    \caption{Yaw, pitch and roll}
+    \label{fig:rotations}
+\end{figure}
+
+\autoref{fig:rotations} shows these rotation components. $\psi$, $\theta$ and $\phi$ are yaw, pitch and roll respectively. As it is a right handed system, we have the following conventions:
+\begin{itemize}
+    \item When $\psi$ is positive, there is a rotation to the left.
+    \item When $\theta$ is positive, there is an upward rotation.
+    \item When $\phi$ is positive, there is a clockwise rotation.
+\end{itemize}
+This is all when looking forward from the center alongside the Z-axis.\bigskip
+
+Each of these rotation components can be defined by a $3\times3$ matrix:
+\begin{equation}
+    \MR_y(\psi) = \begin{pmatrix}
+        \cos\psi & 0 & \sin\psi \\
+        0 & 1 & 0 \\
+        -\sin\psi & 0 & \cos\psi
+    \end{pmatrix}
+\end{equation}
+\begin{equation}
+    \MR_x(\theta) = \begin{pmatrix}
+        1 & 0 & 0 \\
+        0 & \cos\theta & -\sin\theta \\
+        0 & \sin\theta & \cos\theta \\
+    \end{pmatrix}
+\end{equation}
+\begin{equation}
+    \MR_z(\phi) = \begin{pmatrix}
+        \cos\phi & -\sin\phi & 0 \\
+        \sin\phi & \cos\phi & 0 \\
+        0 & 0 & 1
+    \end{pmatrix}
+\end{equation}
+To get the rotation matrix $\MR$, we multiply the yawn, pitch and roll like this:
+\begin{equation} \label{eq:rotation}
+    \MR = \MR_z(\phi)\cdot\MR_y(\psi)\cdot\MR_x(\theta)
+\end{equation}
+\begin{equation*}
+    = \begin{pmatrix}
+    \cos\psi\cos\phi & \sin\theta\sin\psi\cos\phi - \cos\theta\sin\phi & \cos\theta\sin\psi\cos\phi + \sin\theta\sin\phi \\
+    \cos\psi\sin\phi & \sin\theta\sin\psi\sin\phi + \cos\theta\cos\phi & \cos\theta\sin\psi\sin\phi - \sin\theta\cos\phi \\
+    -\sin\psi          & \sin\theta\cos\psi                                  & \cos\theta\cos\psi \\
+  \end{pmatrix} 
+\end{equation*}
+
+\subsection{Translation Vector}
+A translation vector is a $3\times1$ vector of the form $\vt = (t_1, t_2, t_3)^T$. The vector describes the translation along the three different axes. When point $P = (P_1, P_2, P_3)^T$ undergoes a translation described by $\vt$ you get the following:
+\begin{equation}
+    P' = P + \vt = \begin{pmatrix}
+        P_1 + t_1 \\ P_2 + t_2 \\ P_3 + t_3
+    \end{pmatrix}
+\end{equation}
+
+\section{Motion Description}
+\subsection{Motion equation}
+We have talked about motion and the motion parameters. Each frame-to-frame motion will be described using these parameters in a motion equation.\bigskip
+
+To define this equation, take a point with the following coordinates in the CCF: $X = (X_1, X_2, X_3)^T$. After the camera moved, this same point $X$ has now the following coordinates in the CCF $X' = (X'_1, X'_2, x'_3)^T$. The transformation from any $X$ to its corresponding $X'$ can be described by the same equation:
+\begin{equation}\label{eq:motion}
+    \begin{pmatrix}
+        X_1\\ X_2\\ X_3
+    \end{pmatrix} =  \MR \begin{pmatrix}
+        X'_1\\ X'_2\\ X'_3
+    \end{pmatrix}+ \vt
+\end{equation}
+
+\subsubsection{Homogeneous coordinates}
+In what follows, we'll use homogeneous coordinates instead of Cartesian coordinates. The use of Homogeneous coordinates makes some formulas easier to work with and lets us represent projective transformations by a matrix. \bigskip
+
+To write the motion equation from \autoref{eq:motion} in Homogeneous coordinates, we take $P_1 = (X_1, Y_1, Z_1, 1)^T$ and $P_2 = (X_2, Y_2, Z_2, 1)^T$ and come to the following equation:
+\begin{equation}
+    \begin{pmatrix}
+        X_2 \\ Y_2 \\ Z_2 \\ 1
+    \end{pmatrix} = \begin{pmatrix}
+        \MR & 0 \\
+        0 & 0
+    \end{pmatrix} \begin{pmatrix}
+        X_1 \\ Y_1 \\ Z_1 \\ 1
+    \end{pmatrix} + \begin{pmatrix}
+        t_1 \\ t_2 \\ t_3 \\ 1
+    \end{pmatrix}
+\end{equation}
+which can be rewritten as
+\begin{equation}
+    \begin{pmatrix}
+        X_2 \\ Y_2 \\ Z_2 \\ 1
+    \end{pmatrix} = \begin{pmatrix}
+        \MR & \vt \\
+        0 & 1
+    \end{pmatrix} \begin{pmatrix}
+        X_1 \\ Y_1 \\ Z_1 \\ 1
+    \end{pmatrix}
+\end{equation}
+This matrix characterises the transformation or motion that occurred between two frames. Based on these transformation matrices, the position of the camera (and thus the car) can be determined by concatenating the transformations.
+
+\section{Camera model}\label{sec:cammodel}\footnote{Knowledge of this section was primarily gained by the lecture slides of R. Mester \cite{computer_vision}.}
 As we work with 2-D images that are a representation of a 3-D world, there are some things to be said about the projection from 3-D to 2-D. The camera used and its properties are important factors in determining motion.
 
 \subsection{Pinhole camera model}
@@ -167,17 +333,17 @@ As stated before, when working with these equations, all entities should be meas
 
 To solve this problem, we should transform one of the units to the other unit's length entity. As we are primarily working with images, converting everything to pixels is the best way.\bigskip
 
-To do this, we look at the side view of the camera model, as seen in \autoref{fig:fov}. The Field of View (FOV) is a value directly related to $f$ and can be found in the data sheet from the camera that is used (the subscript H and V denote the horizontal and vertical FOV respectively). To calculate the height of the image, we can use basic trigonometry. In a right-angled triangle the tangent of a corner is equal to the length of the opposite side divided by the length of the adjacent side, in our case this means:
+To do this, we look at the side view of the camera model, as seen in \autoref{fig:fov}. The Field of View $F$ is a value directly related to $f$ and can be found in the data sheet from the camera that is used (the subscript H and V denote the horizontal and vertical Field of View respectively). To calculate the height of the image, we can use basic trigonometry. In a right-angled triangle the tangent of a corner is equal to the length of the opposite side divided by the length of the adjacent side, in our case this means:
 \begin{equation}
-    \tan(FOV_V/2) = \frac{h/2}{f}
+    \tan(F_V/2) = \frac{h/2}{f}
 \end{equation}\label{eq:fovv}
 solving for $h$:
 \begin{equation}
-    h = 2f*\tan(FOV_V/2)
+    h = 2f*\tan(F_V/2)
 \end{equation}
 Analogous, we can find the width $w$ of the image like this:
 \begin{equation}\label{eq:fovh}
-    w = 2f*\tan(FOV_H/2)
+    w = 2f*\tan(F_H/2)
 \end{equation}
 \begin{figure}
     \centering
@@ -187,10 +353,10 @@ Analogous, we can find the width $w$ of the image like this:
 \end{figure}
 We know the dimensions of the image we capture in pixels. Solving \autoref{eq:fovv} and \autoref{eq:fovh} for $f$ we find the following equations:
 \begin{equation}
-    f_x = \frac{h}{2\tan(FOV_V/2)}
+    f_x = \frac{h}{2\tan(F_V/2)}
 \end{equation}
 \begin{equation}
-    f_y = \frac{w}{2\tan(FOV_V/2)}
+    f_y = \frac{w}{2\tan(F_V/2)}
 \end{equation}
 Using these values, we define the following $3\times3$ matrix $\MK$ as the \textit{intrinsic parameters}:
 \begin{equation}
@@ -234,130 +400,28 @@ written more compactly:
 
 The point $\vq_c$ is expressed in the coordinate system with the principal axis of the camera pointing straight down the $X_z$-axis. At the origin of this Euclidean coordinate system, the camera is located.
 
-\section{Keypoint detection}\label{sec:keydet}
+\section{The general case: two views of a 3D point set}\label{sec:gen_case}
+In this section I will use point-to-point correspondences between two frames. I will discuss how to get these correspondences in \textbf{REF}, for now let us assume we have found these correspondences already.\bigskip
 
-\subsection{What are keypoints?}
-According to Trucco \& Verri (1998) \cite{book} a local keypoint is defined as a local, meaningful, detectable part of an image. In the following, the term keypoint will be used for local keypoint. A keypoint is a local feature of an image, a part with some properties that differentiates it from other parts of the image. By meaningful, they mean that the feature is associated to interesting scene elements such as sharp intensity variations created by the contours of the objects in the scene. To be detectable they state that location algorithms must exist, if not, a keypoint would be of no use.
+In general, we have a perspective model because we work with a camera that can be simplified to the pinhole camera model as described in \autoref{sec:cammodel}. The equations that relate motion to the image coordinates are non-linear in the motion parameters \cite{tekalp}. A two-step linear algorithm was developed in order to get the motion parameters from (at least eight) point correspondences. Doing this, an intermediate essential matrix $\ME$, consisting of the so called essential parameters is estimated. The way this algorithm works will be discussed in detail later on.
 
-\subsection{Keypoint Detection}
-There is a wide variety of keypoint detectors, each with their own way of finding keypoints. There are multiple types of keypoint detectors, some focus on corner detection like Harris, FAST and Shi-Tomasi. SIFT and SURF on the other hand are scale-space detectors. The advantage of corner detectors is that they are quite invariant to view changes, on the other hand, scale changes pose a problem. Scale-space detectors try to detect keypoints on different scales of the image to find scale invariant keypoints
+\subsubsection{Essential matrix}
+The essential matrix encodes the epipolar geometry of two images. Thus, to break down the essential matrix, we need to have a look at epipolar geometry. \autoref{fig:epigeo} shows a camera in two positions $O_L$ and $O_R$. Point $X$ is projected onto the left image plane resulting in $X_L$ and onto the right image plain resulting in $X_R$.\bigskip
 
-\subsection{Keypoint Description}
-The detection of keypoints is not enough. We need a way to compare these keypoints or rather the image patches around a keypoint and its hypothetical counterpart in the second frame. To do this, we can compare the color or gray values directly, or we can transform them into keypoint descriptors and compare these.\bigskip
+The points $e_L$ and $e_R$ are called the epipoles or epipolar points. They are the projection of the other camera position (its perspective center) onto the image plane. They lay on one line together with the perspective centers $O_L$ and $O_R$.\bigskip
 
-Once again, there are lots of different keypoint descriptors that can be divided in continuous and binary keypoint descriptors. A continuous keypoint descriptor is nothing more than a high-dimensional real-valued vector describing the surroundings of the keypoint. While a binary keypoint descriptor is an vector of bits. The use of bits has the advantage that Hamming distance can be used to compare descriptors, which is very efficient. Also, storing binary values is cheaper than real values (using floating point).
+From the perspective of $O_L$, the line $X-O_L$ is a single point $X_L$ while from the perspective of $O_R$ this is a line. This line $e_R-X_R$, shown as a red line in \autoref{fig:epigeo} is called an epipolar line.\bigskip
 
-An important feature of keypoint descriptors is their robustness, SIFT and SURF (continuous descriptors) for instance are robust to illumination, rotation and scale changes. BRIEF (binary descriptor) on the other hand is only robust to illumination, so illumination and scale changes are a problem when using BRIEF. ORB (binary descriptor) tried to eliminate this shortcoming of BRIEF and is invariant to illumination and rotation.
+When the projection $X_L$ onto the left image plane is known as well as the epipolar line $e_R-X_R$ and point $X$ is projected onto the right image plane: $X_R$ evidently laying on the epipolar line, then each point observed in one image must be observed in the other image on a known epipolar line. This gives us an epipolar constraint, that for each set of points it is possible to test whether they correspond to the same 3-D point. This epipolar constraint can be described by an essential matrix.\bigskip
 
-\section{Oriented FAST and rotated BRIEF (ORB)}
-ORB is based on a combination of the FAST keypoint detector and the BRIEF keypoint descriptor. With ORB, Rublee et al. (2011) \cite{6126544} didn't just develop a combination of FAST and BRIEF, but enhanced it with extra features to make it rotation invariant and resistant to noise while maintaining the focus on speed.
-
-\subsection{FAST Keypoint Orientation (oFAST)}
-Features from Accelerated Segment Test or FAST, proposed by Rosten \& Drummond \cite{10.1007/11744023_34} is a keypoint detector developed with real-time applications in mind. It has thus, as the name suggest, good speed performance. However, the problem with FAST is that there is no orientation component. This is the first thing added by Rublee et al. (2011) \cite{6126544}.\bigskip
-
-\subsubsection{Features from Accelerated Segment Test (FAST)}
-To detect if pixel $p$ is a corner, the pixels on circle with radius $r$ around $p$ are considered, see Figure \ref{fig:fastcircle}. In ORB, $r$ equals 9, which is called FAST-9. The intensity of $p$ is $I_p$. To decide if $p$ is a corner, FAST uses a threshold value $t$. If there exists a set of $n$ (usually 12) contiguous pixels on the circle that are either all brighter than $I_p + t$ or all darker than $I_p - t$, then $p$ is considered a corner.\bigskip
+The essential matrix maps a point in one image to an epipolar line in the other image. If you take a point in one image and multiply it by the essential matrix, you will get the epipolar line on the other image. This essential matrix can then be decomposed into the rotation matrix and translation vector, in \autoref{ssec:essentialmat} I will discuss in detail how to estimate and then decompose the essential matrix.
 
 \begin{figure}
     \centering
-    \includegraphics[width=1\textwidth]{figures/fast_circle.jpg}
-    \caption{Fast with radius 3}
-    \captionsource{Source: \cite{10.1007/11744023_34}}
-    \label{fig:fastcircle}
+    \includegraphics[width=1\textwidth]{figures/epipolar_geometry.png}
+    \caption{Epipolar geometry (image found on \textit{en.wikipedia.org/wiki/Epipolar\_geometry}}
+    \label{fig:epigeo}
 \end{figure}
-
-To make this process even faster, a high-speed test was introduced to eliminate a large number of non-corners. This high-speed test checks only four pixels, the ones on top, bottom, left and right. In Figure \ref{fig:fastcircle} these are pixels 1, 5, 9 and 13. At least three out of four of these pixels have to be either all brighter than $I_p + t$ or all darker than $I_p - t$. If this is not the case, there is no possibility for $p$ to be a corner. If this is the case, the full test will decide whether the $p$ is a corner.\bigskip
-
-The problem with FAST is that it doesn't produce a value to indicate how much of a corner a certain pixel is. To cope with this shortcoming, ORB uses a Harris corner measure \cite{Harris1988ACC} to sort the keypoints detected by the FAST detector. After using FAST with a low threshold value (to ensure at least $N$ keypoints are detected), it sorts the corners based on the Harris measure, leaving only the top $N$ points. As FAST doesn't produce multi-scale features, a scale pyramid is used to calculate FAST features at each level in the pyramid.
-
-\subsubsection{Orientation using Intensity Centroid}
-ORB uses Intensity Centroid \cite{ROSIN1999291}, a measure of corner orientation. It uses geometric moments to determine the corner orientation. Rosin defines the momentum as: 
-\begin{equation}
-    m_{pq} = \sum_{x,y} x^p y^q I(x, y),
-\end{equation}
-the centroid can then be found by:
-\begin{equation}
-    C = (\frac{m_{10}}{m_{00}},\frac{m_{01}}{m_{00}}).
-\end{equation}
-Placing $O$ at the center of the corner, a vector $\Vec{OC}$ can be created, the corner orientation is then:
-\begin{equation}
-    \theta = \mathrm{atan2}(m_{01}, m_{10})
-\end{equation}
-where $\mathrm{atan2}(x, y)$ or 2-argument arctangent is defined as the angle in the Euclidean plane, given in radians, between the positive x axis and the ray to the point $(x, y) \neq (0, 0)$ \cite{unknown-author-2022}. \autoref{fig:atan2} shows a graph of this function.\bigskip
-
-\begin{figure}
-    \centering
-    \includegraphics[width=1\textwidth]{figures/atan2.png}
-    \caption{Graph of $\mathrm{atan2}(x,y)$ over $y/x$}
-    \label{fig:atan2}
-\end{figure}
-
-ORB improves the rotation invariance even more by making sure that the moments are computed with $x$ and $y$ remaining within a circular region of radius $r$. \cite{6126544} found the patch size to be a fit value for $r$. This means $x$ and $y$ run from $[-r, r]$. $\mid C\mid$ approaching 0 makes the measure become unstable, but this is rarely the case for FAST corners \cite{6126544}.
-
-\subsection{Rotation-Aware BRIEF (rBRIEF)}
-We now have keypoints and their orientation, the next step is to compute the descriptor using BRIEF. As stated before, BRIEF is not invariant to rotation, which is why ORB introduced a modification: Rotation-Aware BRIEF.
-
-\subsubsection{Binary Robust Independent Elementary Features (BRIEF)}
-BRIEF \cite{10.1007/978-3-642-15561-1_56} uses a small number of pairwise comparisons to classify patches from which it makes a bit vector. They defined the test $\tau$ on patch $\boldsymbol{p}$ like this:
-\begin{equation}
-    \tau(\boldsymbol{p};\boldsymbol{x},\boldsymbol{y}) := \left\{\begin{array}{ll}
-         1\quad : \boldsymbol{p}(\boldsymbol{x}) < \boldsymbol{p}(\boldsymbol{y})\\
-         0\quad : \boldsymbol{p}(\boldsymbol{x}) \geq \boldsymbol{p}(\boldsymbol{y})
-    \end{array} \right.,
-\end{equation}
-with $\boldsymbol{p}(\boldsymbol{x})$ the pixel intensity in a smoothed version of $\boldsymbol{p}$ at $\boldsymbol{x} = (u, v)^T$. The BRIEF descriptor is then defined as the $n$-dimensional bitstring
-\begin{equation}
-    f_n(\boldsymbol{p}) := \sum_{1\leq i\leq n} 2^{i-1}\tau(\boldsymbol{p};\boldsymbol{x},\boldsymbol{y}) .
-\end{equation}
-
-Relying on the experiments of \cite{10.1007/978-3-642-15561-1_56}, ORB will use $n = 256$, a Gaussian distribution around the center of the patch and smooth the image using an integral image where each test point is a $5 \times 5$ subwindow of a $31 \times 31$ pixel patch. Based on experimental results in \cite{10.1007/978-3-642-15561-1_56} and their own these showed to be performing well.
-
-\subsubsection{Steered BRIEF}
-As stated before, BRIEF is not robust when it comes to in-plane rotations. Even small rotations over a few degrees drops the amount of inliers significantly \cite{6126544}. ORB tackles this problem by introducing Steered BRIEF which steers the BRIEF descriptor according to the orientation of the keypoint. \bigskip
-
-To get to the steered BRIEF operator, a $2\times n$ matrix is defined as follows, $n$ being the amount of binary tests:
-\begin{equation}
-    \MS = \begin{pmatrix}
-    x_1,...,x_n \\
-    y_1,...,y_n
-    \end{pmatrix}
-\end{equation}
-
-The steered version $\MS_\theta$ of $\MS$ is constructed using the rotation matrix $\MR_\theta$, $\theta$ being the orientation of the patch:
-\begin{equation}
-    \MS_\theta = \MR_\theta \MS
-\end{equation}
-The steered BRIEF operator is now
-\begin{equation}
-    g_n(\boldsymbol{p},\theta):=f_n(\boldsymbol{p})\mid(x_i,y_i)\in \MS_\theta
-\end{equation}
-
-A lookup table is constructed for values of $\theta = 2k\pi/30, k \in \mathbb{N}_0$. If the keypoint orientation $\theta$ is consistent across views, the correct set of points $\MS_\theta$ will be used to compute the descriptor.
-
-\subsubsection{rBRIEF}
-However, the benefit of rotational invariance comes at a price. Rublee et al. (2011) \cite{6126544} noticed a loss of variance and high correlation among the binary tests. To cope with these shortcomings, they developed a learning method to choose a good subset of binary tests. The goal is to have high variance of the bit feature and means close to 0.5, as well as being uncorrelated. To do this, they look at all binary tests.\bigskip
-
-\cite{6126544} proposes the following greedy algorithm to get a set of uncorrelated tests with a mean close to 0.5:
-\begin{enumerate}
-    \item Run each test  against all training patches.\smallskip
-    \item Order the tests by their distance from a mean of 0.5, forming the vector $\vt$.\smallskip
-    \item Greedy search:\smallskip
-    \begin{enumerate}
-        \item Put the first test into the result vector $\vr$ and remove it from $\vt$.\smallskip
-        \item Take the next test from $\vt$, and compare it against all tests in $\vr$. If its absolute correlation is greater than a threshold, discard it; else add it to $\vr$.\smallskip
-        \item Repeat the previous step until there are 256 tests in R. If there are fewer than 256, raise the threshold and try again.\smallskip
-    \end{enumerate}
-\end{enumerate}
-
-They showed that this is a good method to ensure high diversity and low correlation between the bit features.\bigskip
-
-Rublee et al.\cite{6126544} is the perfect paper for a more detailed explanation of ORB, along with an evaluation and comparison with SURF and SIFT. 
-
-% \section{Visual Odometry}
-% Visual Odometry (VO) is a process that calculates the motion (rotation and translation) of a body based on the images of a single or multiple cameras attached to the body. There are multiple ways to achieve this. 
-
-\section{Motion estimation}
-Now that keypoints are detected and point-to-point correspondences can be made we need to find the transformation from the first set of keypoints to the second. As stated before in \autoref{sec:determmot}, there are two cases. First we will handle the general case.\bigskip
 
 Suppose we have keypoint on the image, then this keypoint corresponds with a point in the real world $\MX = (X_1, X_2, X_3)^T$ that has been matched to another keypoint corresponding to another real world point $\MX' = (X_1', X_2', X_3')^T$. The transformation of $X$ to $X'$ can be described as follows: 
 
@@ -414,8 +478,8 @@ We want to obtain a relationship in terms of the image plane coordinates. To do 
     \end{pmatrix}
     \ME
     \begin{pmatrix}
-        x1 \\
-        x2 \\
+        x_1 \\
+        x_2 \\
         1
     \end{pmatrix}
     = 0
@@ -439,14 +503,14 @@ As stated before, one of the essential parameters will be set to one. Take $e_9 
         x_2
     \end{pmatrix}
     \begin{pmatrix}
-        e1 \\
-        e2 \\
-        e3 \\
-        e4 \\
-        e5 \\
-        e6 \\
-        e7 \\
-        e8 \\
+        e_1 \\
+        e_2 \\
+        e_3 \\
+        e_4 \\
+        e_5 \\
+        e_6 \\
+        e_7 \\
+        e_8 \\
     \end{pmatrix}
     = -1
 \end{equation}
@@ -529,6 +593,26 @@ By solving these equations to $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\bolds
 \begin{equation}
     \boldsymbol{r_2} = \biggl[\frac{1}{k^2}\hat{t}\cdot(\boldsymbol{e_1}\times\boldsymbol{e_2})\biggr]\hat{t}+\frac{1}{k}(\boldsymbol{e_3}\times\hat{t})
 \end{equation}\bigskip
+
+
+\section{The planar case: two views of points on a plane}
+Once again, as in \autoref{sec:gen_case} we will assume we have found point-to-point correspondences between two frames.
+
+When all points lay in one plane, the general case with the essential matrix does not work. The Essential matrix cannot be determined from such a set of points. Fortunately, there is another way to deal with this case. To do this, I need to introduce the term Homography. \bigskip
+
+A homography relates the transformation between two planes up to a scaling factor. I will discuss the scale ambiguity later. A homography matrix is a $3\times3$ matrix with 8 degrees of freedom as we have an unknown scale factor.\bigskip
+
+If we have a planar surface $P = (x, y, 1)^T$, then after transforming this plane (by e.g. changing the camera angle) it will be transformed to $P' = (x', y', 1)^T$. The transformation from $P$ to $P'$ can be expressed using the homography matrix like this:
+\begin{equation}
+    s\begin{pmatrix}
+        x' \\ y' \\ 1
+    \end{pmatrix} = \MH \begin{pmatrix}
+        x \\ y \\ 1
+    \end{pmatrix}
+\end{equation}
+$s$ being the unknown scale factor. Note that we are using homogeneous coordinates instead of euclidean coordinates.\bigskip
+
+It is clear that it is possible to estimate a homography matrix if we have multiple corresponding points on both planar surfaces. This homography can then be decomposed into the rotation matrix, translation vector and normal vector. How to estimate the homography and how to decompose it will be discussed in detail later on.
 
 \subsection{Planar case: Homography}
 
@@ -685,3 +769,6 @@ This indicates the rotation is a pure rotation around an axis through the origin
     \MR = \left(\frac{1}{\lambda_1}\right)\MA
 \end{equation*}
 In this case, it is not possible to determine translation vector $\vt$ and the normal vector $(a, b, c)^T$ as there is no translation.
+
+\section{Combining the use of homography and essential matrix}
+Using one of these does not have to exclude using the other. As the footage we will be using will have both points laying on a fixed planar surface (being the road surface) and points spread out in space, we can use the essential matrix and homography matrix complementary.

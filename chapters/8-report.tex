@@ -1,7 +1,11 @@
-\chapter{Approach to estimate vehicle motion}
+\chapter{Design and Implementation of the Image Sequence Processing System for Motion Analysis}\label{chap:system_implementation}
 
-\section{Sequencer}
-First, we need a way to step through the footage of the race car efficiently. For this purpose, a sequencer is built, this sequencer takes footage from a camera mounted to a racing car. The footage from the camera is a video, to process this, each frame of the video is stored as a separate image. These images can be fed to the sequencer to process them. The sequencer takes 1 of these images at a time as input and stores it in a buffer. This image is converted into a grayscale image and cropped so the horizon is (as much as possible) out of the image. This converted image is then inserted into a FIFO of length N (right now, N is set at two). The two images in the FIFO are now ready for processing, the specifics of this processing will be discussed later. The visualisation component takes the images in the FIFO to visualise everything (keypoints, motion vectors...).\bigskip
+In this chapter, I will show the different steps in the process of developing the software system designed to estimate vehicle motion.
+
+\section{Sequencer as a way to step through the footage}
+First, we need a way to step through the footage of the race car efficiently. In a finished product there is of course only one way to step through the footage: frame after frame. However, as we want to experiment with different frames, we need to be able to go through the footage quickly and easily.\bigskip
+
+For this purpose, a sequencer is built, this sequencer takes footage from a camera mounted to a racing car. The footage from the camera is a video, to process this, each frame of the video is stored as a separate image. These images can be fed to the sequencer to process them. The sequencer takes 1 of these images at a time as input and stores it in a buffer. This image is converted into a grayscale image and cropped so the horizon is (as much as possible) out of the image. This converted image is then inserted into a FIFO of length N (right now, N is set at two). The two images in the FIFO are now ready for processing, the specifics of this processing will be discussed later. The visualisation component takes the images in the FIFO to visualise everything (keypoints, motion vectors...).\bigskip
 
 With specific keys, it is possible to go forwards and backwards through the sequence. When advancing through the sequence a new image is loaded in the buffer. It is also possible to jump multiple frames ahead/backwards. The buffer is then cleared and filled with the correct images. With a press of the space bar, the sequencer continuously takes the next input image and loops the sequence.\bigskip
 
@@ -18,14 +22,14 @@ Figure \autoref{fig:scheme} shows an overview of the different steps the sequenc
 \subsection{Grayscale or color}
 For now, the images are converted to grayscale. The big advantage is that a grayscale image only has one third of the information of an image in color with the same dimensions. Computationally everything will be faster using grayscale instead of color images. The drawback is a loss of information, but that drawback is rather small. The color of the image does not give us much more information to recognise structure and detect keypoints. So it is not worth the extra computations.\bigskip
 
-However, in the footage we are using, the road is marked by colored cones. Most of the time the road is marked by yellow cones but sometimes there are blue cones on the road which means the car should slalom in between these cones. If at one point it should turn out the color of the cones is necessary, this will not be a problem. The newest image is always stored in the buffer in its original color, if we want to determine the color of the cone, this can easily be done by looking at the area where the cone is on the original image.
+However, in the footage we are using, the road is marked by colored cones. Most of the time the road is marked by yellow cones but sometimes there are blue cones on the road which means the car should slalom in between these cones. If at one point it should turn out the color of the cones is necessary, this will not be a problem. The newest image is always stored in the buffer in its original color, if we want to determine the color of the cone, this can easily be done by looking at the area where the cone is located on the original image.
 
 \subsection{Removing irrelevant information}\label{ssec:irrelevant}
-As said before, the images are converted to grayscale. Next to that, they are also cropped. We are only interested in what is going on below the horizon, everything above it will not give us much information. In the footage we are using, there is not much to be cropped, because the footage we have is from a camera that was mounted tilted. Now that the sky and everything above the horizon is cropped out, there is one part of converting left.
+As said before, the images are converted to grayscale. Next to that, they are also cropped. For now, we are only interested in what is going on below the horizon, as we focus on the homography we only need the road surface. In the footage we are using, there is not much to be cropped, because the footage we have is from a camera that was mounted tilted. Now that the sky and everything above the horizon is cropped out, there is one part of converting left.
 
 \subsection{Masking out the ego-car}
 \label{ssec:egocar}
-The car itself is not moving relative to the camera, as the camera is fixed to the car, so it is irrelevant for the estimation of the movement. A mask is created to erase the car from the footage. This is only done when displaying the image however, otherwise the computation of keypoints would not work properly. When detecting the keypoints in the next step, keypoints laying in the area masked out by the ego-car, can be removed as keypoints. Figure \autoref{fig:input_image} shows an example of a frame before it is preprocessed. Figure \autoref{fig:output_image} shows the image after preprocessing. The black part is the masked out ego-car.
+The car itself is not moving relative to the camera, as the camera is fixed to the car, so it is irrelevant for the estimation of the movement. A mask is created to erase the car from the footage. This is only done when displaying the image however, otherwise the computation of keypoints would not work properly. When detecting the keypoints in the next step, keypoints laying in the area masked out by the ego-car, can be removed as keypoints. This is done by giving the mask as a parameter to OpenCV when computing the keypoints. Figure \autoref{fig:input_image} shows an example of a frame before it is preprocessed. Figure \autoref{fig:output_image} shows the image after preprocessing. The black part is the masked out ego-car.
 
 \begin{figure}
     \centering
@@ -41,35 +45,36 @@ The car itself is not moving relative to the camera, as the camera is fixed to t
     \label{fig:output_image}
 \end{figure}
 
-\section{Frame-to-frame motion of the car}
+\section{Frame-to-frame 2D motion analysis}
 We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix $\MR$, translation vector $\vt$ and normal vector $\vn$ must be calculated. These can be calculated using keypoints in the frames. 
 
-\subsection{What are keypoints}
-Keypoints are points in an image that carry a lot of information. If you were to take the point out of the image, it would be easy to recognise where the point is located in the image. To illustrate this, look at figure \autoref{fig:features}, this shows an image with 3 sections cut out. If you had to search for the place section C was cut out, it would be impossible as it could be almost anywhere. Section B is easier to locate, but you could move the cut horizontally without affecting the cut. Moving it vertically (along the gradient) the cut would change. Section A is the easiest to locate. There is no doubt as to where the cut is taken. Moving in either horizontal and vertical direction affects the cut.\bigskip
+\subsection{Finding keypoints}
+When the next image is loaded into the FIFO, we can detect the keypoints. As discussed in \autoref{sec:orb}, we use ORB. To find the keypoints we use the method \textit{detectAndCompute} on this image. We set the maximum amount of keypoints to a high 8000 for now. As we'll be using only a part of these, it isn't the best strategy computation wise. However, this ensures that we have enough keypoints as the road surface does not always have a lot of texture. \bigskip
 
 \begin{figure}
     \centering
-    \includegraphics[width=1\textwidth]{figures/features.png}
-    \caption{Keypoints in an image}
-    \label{fig:features}
+    \includegraphics[width=1\textwidth]{figures/Unfiltered_keypoints.png}
+    \caption{Detected keypoints before filtering}
+    \label{fig:unfiltered}
 \end{figure}
 
-This shows that corners are good keypoints in images as they have multiple gradients in different directions and can thus be easily located. Blobs could also be good keypoints. Blobs are a number of pixels that are connected through a common property.
+\subsection{Filtering keypoints}\label{ssec:filtering}
 
-\subsection{Matching keypoints}
-The point in finding the keypoints is to know where these specific points are in another image. To match these keypoints, the region around the keypoint is looked at. This is called keypoint description and based on the description, matches are made between keypoints in different images. These matches hold the information to calculate the motion of the car.\bigskip
+\autoref{fig:unfiltered} shows a frame with it's detected keypoints. Two things are clear: we have an excess of keypoints and they come in certain clusters. Thus we need to remove a big chunk of these keypoints, while trying to ensure we have a keypoint from the different clusters. To do this we work with a bucketing system. This means the image is divided into buckets. A bucket is a patch of the image, patches have no overlap and all patches together form the image.\bigskip 
 
-There are a lot of different methods and algorithms to find keypoints, describe them and match them.\bigskip
+The reason we have to use this bucketing system and remove the overall clustering of the keypoints can be found in \cite{6153423}. Fraundorfer and Scaramuzza state that "the keypoints should cover the image as evenly as possible".\bigskip 
 
-One way to match the keypoints is a Brute-Force Matcher. It is a rather simple matcher that takes the descriptor of a feature in image 1 and matches this descriptor with all the descriptors of image 2. It calculates the distance between these descriptors and returns the closest match. Different distance measurement types can be used. Cross checking is also a possibility, this means that matches are checked both ways. The matcher only returns those matches that are closest in both directions.
 
-\subsection{Oriented FAST and Rotated BRIEF: ORB}
-ORB or Oriented FAST and Rotated BRIEF is, as the name suggests, a combination of the FAST detector and BRIEF descriptor. ORB enhances the performance of the two with modifications. FAST is used to find keypoints, after which Harris Corner measure is used to find the top points among them. A pyramid scheme is used to produce multiscale-features. \bigskip 
+Practically we divided the image in a grid of 40 by 20, leaving us with 800 buckets. Each of these buckets will have a maximum of 1 keypoint at the end, of course if there was no keypoint present in a bucket before filtering, there will not be a keypoint after filtering. \autoref{fig:bucketing} shows the result after filtering out the keypoints using the bucketing system.\bigskip
 
-One of the main advantages of ORB is the speed, according to Rublee et al. (2011) \cite{6126544} at two orders of magnitude faster than SIFT due to the fact that ORB is computationally more efficient. It is also more noise invariant and because of the speed useful in real-time applications.
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/bucketing_filtered.png}
+    \caption{Detected keypoints after bucketing}
+    \label{fig:bucketing}
+\end{figure}
 
-\subsection{Filtering keypoints}
-In \autoref{ssec:egocar} we already talked about the fact that keypoints part of the ego-car are considered noise as they are no part of the planar surface. But the keypoints are not the only keypoints that should be discarded. Everything above the horizon is not part of the planar surface either. In the future, we could try to detect the horizon and discard all keypoints above it, but for now we will do this manually.
+As discussed before, we are looking for keypoints that are part of the road surface. Keypoints above the horizon can thus be discarded as we can say with absolute certainty that these will not be a part of the road surface. For now, we will determine the horizon empirically, in a later stage, when we have found the normal vector $\vn$ it will be possible to estimate the horizon based on this.\bigskip
 
 As stated before, the footage we have is from a camera that is mounted tilted. This means we are not able to simply discard all keypoints above a horizontal line. We describe the horizon as a linear equation of the form
 \begin{equation}\label{eq:linear}
@@ -93,18 +98,61 @@ which can be rewritten as
 \end{equation}
 For now an estimation suffices so we chose two points empirically. In \autoref{ssec:irrelevant} we already chose a height to cut off irrelevant information, this height was chosen based on the horizon. For $p_1$ we take this height as $y_1$ and as the camera is tilted to the right this is the leftmost point and $x_1 = 0$. For $p_2$ we chose a point at the utmost right of the image so $x_2$ is equal to the width of the image. For $y_2$ we choose a value by simply looking what seems to be the best option. \bigskip
 
-\autoref{fig:key_orig} shows all keypoints detected without filtering out those above the horizon (keypoints on ego-car are already left out). \autoref{fig:key_filtered} shows what keypoints remain after filtering out those above the horizon. In both images, the horizon line is plotted to illustrate where our horizon lays. For illustrating purposes, the contrast in the images is lowered by mapping the gray values between [0, 255] to [128, 255]. By doing this, the image is still clearly visible to the human eye but keypoints and the motion vectors are more visible.
+\autoref{fig:horizon} shows the same original image after filtering away the points that lay above the horizon. For illustration purposes, the horizon is drawn. Finally, in \autoref{fig:filtered} shows the keypoints that are left over after filtering, these are the keypoints we will work with.\bigskip
 
 \begin{figure}
     \centering
-    \includegraphics[width=1\textwidth]{figures/keypoint_orig.png}
-    \caption{Keypoints before filtering}
-    \label{fig:key_orig}
+    \includegraphics[width=1\textwidth]{figures/Horizon_filtered.png}
+    \caption{Detected keypoints after removing keypoints above the horizon}
+    \label{fig:horizon}
 \end{figure}
 \begin{figure}
     \centering
-    \includegraphics[width=1\textwidth]{figures/keypoint_filtered.png}
-    \caption{Keypoints after filtering keypoints above the horizon}
-    \label{fig:key_filtered}
+    \includegraphics[width=1\textwidth]{figures/Filtered_keypoints.png}
+    \caption{Detected keypoints after bucketing and removing keypoints above the horizon}
+    \label{fig:filtered}
 \end{figure}
 
+For illustrating purposes, the contrast in the images is lowered by mapping the gray values between [0, 255] to [128, 255]. By doing this, the image is still clearly visible to the human eye but keypoints and the motion vectors are more visible.
+
+\subsection{Matching keypoints}
+The point in finding the keypoints is to know where these specific points are in another image. Note that the filtering described in \autoref{ssec:filtering} is only done on the oldest image. If we were to filter both images, chances are big we would be left with no good matches. After all, there is no way of guaranteeing that the right match of a keypoint that is not filtered will also be unfiltered in the second image.\bigskip
+
+We use a brute force Hamming descriptor matcher, this means matches are made based on the Hamming distance between descriptors. Brute force means that every possible match is made for a certain keypoint after which the best match for that specific keypoint is chosen. The OpenCV \textit{match} method returns a list of matches based on this principle.\bigskip
+
+When we look at the matches, draw both keypoints and connect them, what we should see is a bunch of motion vectors. However, looking at \autoref{fig:matches}, this is clearly not the case. Not all the matches we got are good matches, so once again we have to filter out the good ones.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/keypoint_matches.png}
+    \caption{Keypoint matches}
+    \label{fig:matches}
+\end{figure}
+
+The algorithm to calculate the homography is very prone to even the smallest outliers and mistakes. To prevent this, we look at the estimated matches one by one to look if it is actually a good match. We look at patches from around both keypoints while also factoring in the motion vector. \autoref{fig:match_check} shows a screenshot of this process. This is clearly a good match, the two patches are very similar and the motion vector drawn is plausible in this scenario. \autoref{fig:bad_match} however shows a match that is clearly a mistake, this match will not be considered anymore.\bigskip
+
+Recall that we are looking for a homography between the ground plane in the two frames. So we can only use keypoints that are on the road surface. While checking if the keypoints are correctly matched, we also check if this is the case. After checking all this, we are left with good matches between keypoints in the two frames, that are part of the road surface.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/match_checking.png}
+    \caption{Confirming if this is a good match}
+    \label{fig:match_check}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/match_checking_bad.png}
+    \caption{Wrongly matched keypoints}
+    \label{fig:bad_match}
+\end{figure}
+
+\section{Estimating 3D motion from sets of 2D point correspondences}
+\subsection{Determining motion}
+\subsubsection{Estimating homography}
+We now have a good set of keypoint matches on the road surface. Using these, we can estimate the Homography between the road surfaces in the consecutive frames. Using the OpenCV method \textit{findHomography} we get a homography matrix. There are multiple methods in estimating the homography. When no parameter is given for the method, all keypoints are used to estimate the homography using the least squares method. Having one or multiple outliers has a big impact on this method and will return a faulty homography. \bigskip
+
+\subsubsection{Random sample consensus (RANSAC)}
+Using another method like RANSAC will make the estimation more robust to these outliers. RANSAC takes a random sample of the provided keypoints, calculates the homography based on this subset, then checks al keypoints for this homography and repeats this process to find the subset which works for the most keypoints. This subset is then called the consensus, all keypoints that are not a part of the consensus are considered outliers and will thus not be used to estimate the homography. 
+
+\subsubsection{Decomposing the homography}
+We now have a homography, using the OpenCV method \textit{decomposeHomograpyMat}, we get a list of possible rotation matrices, translation and normal vectors. To decompose the homography, we need to provide the intrinsic parameters of the camera we used, see \autoref{sec:cammodel}.
