@@ -1,26 +1,31 @@
 \chapter{Project Status and Plans for future Action}
 
-\section{Happened since last meeting (25/02/2022)}
+\section{Happened since last meeting (/04/2022)}
 \begin{itemize}
-    \item Rewriting of project journal
-    \item Researching keypoint detection in OpenCV
-    \item Refactoring of code to eliminate duplicate code
-    \item Original images in buffer, processing done by separate function
-    \item Research keypoint detection
-    \item Research ORB
-    \item Simple ORB detection and matching added
-    \item ORB, ignoring ego car
-    
+    \item Calculation of Homography (based on manually selected matched keypoints)
+    \item Decomposing homography into Rotation matrix, translation vector and normal vector
+    \item Calculation of Essential matrix (based on manually selected matched keypoints)
+    \item Decomposing essential matrix into Rotation matrix and translation vector
+    \item translating rotation matrix into Euler angles
+    \item Visualisation of rotation angles and translation
 \end{itemize}
+
 \section{Ongoing work}
 \begin{itemize}
-    \item ORB with bucketing
-    \item Calculate Homography ${H}$ (there are not enough keypoints sometimes)
-    \item calculate rotation matrix ${R}$, translation vector $\vec{t}$ and normal vector $\vec{n}$ out of Homography ${H}$
+    \item Deciding which combination of rotation/translation is the right one?
+    \item Taking the motion parameters, and assume they remain the same for the next pair of frames, and thus making predictions for
+    \begin{itemize}
+        \item the horizon line
+        \item the approximate position of a point tracked from image N to N+1 into frame N+2
+    \end{itemize}
 \end{itemize}
-\section{Plan for next period}
 
 \section{Long Term Plans and Ideas}
 \begin{itemize}
-    \item determine translation-, rotation- and normal vector
+    \item 
+\end{itemize}
+
+\section{TODO}
+\begin{itemize}
+    \item 
 \end{itemize}
