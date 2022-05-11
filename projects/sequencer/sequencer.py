@@ -43,6 +43,7 @@ class Sequencer:
         self.positions = np.array([self.position])
         self.angles = np.array([[0, 0, 0]])
         self.pos_plot = plt.figure()
+        self.ax = self.pos_plot.add_subplot(111, projection='3d')
         self.angles_plot, self.angles_ax = plt.subplots()
 
         self.pointsFifo = collections.deque(maxlen=self.BUF_SIZ)
@@ -264,6 +265,7 @@ class Sequencer:
                         break
                     out = self.show_image(None, self.imageFifo[0])
                     self.plot_angles()
+                    self.plot_positions()
                     cv2.imshow(title, out)
                     index += 1
                     key = cv2.waitKey(1)
@@ -297,7 +299,7 @@ class Sequencer:
 
     def find_homography(self, index, title):
         # Calculate homography and decompose it
-        good_matches = self.load_points(index, title)
+        good_matches = self.load_points(index, title, 0)
         points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
         points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
         i = 0
@@ -313,15 +315,36 @@ class Sequencer:
         # print(H)
         # print("Decomposing Homography")
         retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-        T = self.form_transformation_matrix(rotations[0], translations[0])
+        self.update_transformations(rotations[0], translations[0])
+        return True
+
+    def find_essential(self, index, title):
+        # Calculate homography and decompose it
+        good_matches = self.load_points(index, title, 1)
+        points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
+        points2 = np.zeros((len(good_matches), 2), dtype=np.int32)
+        i = 0
+        for match in good_matches:
+            points1[i, :] = self.cropped_to_original((match[0], match[1]))
+            points2[i, :] = self.cropped_to_original((match[2], match[3]))
+            i += 1
+        if i < 5:
+            print("Not enough matches")
+            return False
+        E, = cv2.findEssentialMat(points1, points2, self.K, cv2.RANSAC)
+        R1, R2, t = cv2.decomposeEssentialMat(E)
+        self.update_transformations(R1, t)
+        return True
+
+    def update_transformations(self, rotation, translation):
+        T = self.form_transformation_matrix(rotation, translation)
         self.transformation = np.matmul(self.transformation, T)
         current_position = np.array([self.transformation[0][3],
                                      self.transformation[1][3],
                                      self.transformation[2][3]])
         self.positions = np.append(self.positions, [current_position], axis=0)
-        angles = self.rotationMatrixToEulerAngles(rotations[0])
+        angles = self.rotationMatrixToEulerAngles(rotation)
         self.angles = np.append(self.angles, [angles], axis=0)
-        return True
 
     def form_transformation_matrix(self, r, t):
         T = np.zeros((4, 4))
@@ -333,9 +356,16 @@ class Sequencer:
             T[i][3] = t[i]
         return T
 
-    def load_points(self, index, title):
-        filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
+    def load_points(self, index, title, point_type=0):
+        # point_type 0 is points on a plane->homography, type 1 is all points->essential matrix
+        if point_type == 0:
+            filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
             5) + '.txt'
+        elif point_type == 1:
+            filename = self.folder + '/points/essential/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
+            5) + '.txt'
+        else:
+            return
         if not path.exists(filename):
             good_matches = self.select_keypoints(index, title)
             good_matches = good_matches.reshape(len(good_matches), 4)
@@ -364,8 +394,15 @@ class Sequencer:
         cv2.waitKey(0)
 
     def select_keypoints(self, index, title):
-        filename = self.folder + '/points/IMG' + str(int(index - 2)).zfill(5) + '-' \
+        point_type = input("\n0. Homography\n1. Essential")
+        while point_type != 0 and point_type != 1:
+            point_type = input("\n0. Homography\n1. Essential")
+        if point_type == 0:
+            filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + '-' \
                    + str(int(index - 1)).zfill(5) + '.txt '
+        else:
+            filename = self.folder + '/points/essential/IMG' + str(int(index - 2)).zfill(5) + '-' \
+                       + str(int(index - 1)).zfill(5) + '.txt '
         kp1, des1 = self.dispose(self.pointsFifo[0])
         kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
         des1 = des1.astype('uint8')
@@ -554,7 +591,6 @@ class Sequencer:
         return image
 
     def plot_positions(self):
-        ax = self.pos_plot.add_subplot(111, projection='3d')
         xdata = np.array([])
         ydata = np.array([])
         zdata = np.array([])
@@ -562,8 +598,9 @@ class Sequencer:
             xdata = np.append(xdata, pos[0])
             ydata = np.append(ydata, pos[1])
             zdata = np.append(zdata, pos[2])
-        ax.plot(xdata, ydata, zdata, color='b')
-        plt.show()
+        self.ax.plot(xdata, ydata, zdata, color='b')
+        self.pos_plot.canvas.draw()
+        self.pos_plot.show()
 
     def plot_angles(self):
         angles = np.transpose(self.angles)
