@@ -47,7 +47,7 @@ The first thing we have to do is define how the center of the VCF is translated 
      \end{pmatrix} 
 \end{equation}
 
-Secondly, we need to have a look at the rotation, how a rotation matrix works is explained in \autoref{ssec:rotmat}. The rotation from VCF to CCF is defined like this:
+Secondly, we need to have a look at the rotation, how a rotation matrix works is explained in \autoref{ssec:rotmat}. The rotation from VCF to CCF is defined like this (for a detailed explanation on how rotation matrices work, see \autoref{ssec:rotmat}):
 
 \begin{equation}
     \MR_{VC} = \MR_z(\phi_{VC})\cdot\MR_y(\psi_{VC})\cdot\MR_x(\theta_{VC})
@@ -57,18 +57,49 @@ Thus, to transform a point $P_V = (P_{V1}, P_{V2}, P_{V3})^T$ in the VCF to it's
 \begin{equation}
     \begin{pmatrix}
         P_{C1} \\ P_{C2}\\ P_{C3}
-    \end{pmatrix} = \begin{pmatrix}
+    \end{pmatrix} = \MR_{VC}\begin{pmatrix}
         P_{V1} \\ P_{V2}\\ P_{V3}
-    \end{pmatrix} + \begin{pmatrix}
-         t_{VC,1} \\ -t_{VC,2} \\ t_{VC,3}
-     \end{pmatrix} 
+    \end{pmatrix} + \vt_{VC} 
 \end{equation}
+
+To go from the CCF to the VCF, it is only logical to do the reverse transformation: first subtracting $\vt_{VC}$ followed by a rotation inverse to $\MR_{VC}$.
+
+\subsubsection{VCF to WCF}
+When switching between the VCF and the WCF there are different scenario's. Unlike in the previous section, the VCF and WCF have no fixed transformation. The VCF will move relative to the WCF (which is what we will be trying to track).\bigskip
+
+Before the car has moved, the VCF and WCF will be located at the same point by definition of the WCF. Thus the translation vector $\vt_{VW}$ equals $(0, 0, 0)^T$. The WCF equals the VCF at frame 0 rotated around the z-axis over 180 degrees or $\pi$. This gives us the following rotation matrix:
+\begin{equation}
+    \MR_{VW} = \MR_z(\pi)\cdot\MR_y(0)\cdot\MR_x(0)
+\end{equation}
+or
+\begin{equation}
+    \MR_{VW} = \begin{pmatrix}
+        -1 & 0 & 0 \\
+        0 & -1 & 0 \\
+        0 & 0 & 1
+    \end{pmatrix}
+\end{equation}
+
+Resulting in the following conversion from $P_V = (P_{V1}, P_{V2}, P_{V3})^T$ to $P_W = (P_{W1}, P_{W2}, P_{W3})^T$:
+
+\begin{equation}\label{eq:VW}
+    \begin{pmatrix}
+        P_{W1} \\ P_{W2}\\ P_{W3}
+    \end{pmatrix} = \MR_{VW}\begin{pmatrix}
+        P_{V1} \\ P_{V2}\\ P_{V3}
+    \end{pmatrix}
+\end{equation}
+
+When the vehicle has already moved from its original starting point, this transformation must be accounted for. To go from the VCF to the WCF, first do the inverse transformation from $VCF_n$ to $VCF_0$ and then rotate following \autoref{VW}.
+
+\subsubsection{CCF to WCF}
+To go from the CCF to the WCF, it suffices to concatenate the two previous discussed transformation: going from the CCF to the VCF and then going to the WCF.
 
 \section{Motion Parameters}
 Every 3-D rigid motion can be decomposed into two components, each of which have three degrees of freedom. The displacement in this plane is called the translation and can be expressed by the translation vector $\vt$. The second parameter is the rotation, this can be expressed with the rotation matrix $\MR$. Additionally, when a motion is happening on a flat surface we can define this plane uniquely, the normal vector $\vn$ does this.\bigskip
 
 \subsection{Rotation Matrix}\label{ssec:rotmat}
-A 3-D rotation can always be described by a sequence of 3 partial rotations, a yaw, a pitch and a roll. It is important to note that the decomposition from rotation matrix to its components is done according to a convention. This convention states the order in which the rotations are done, if these are switched, the decomposition will be wrong. The convention I will use is as follows: pitch, yaw, roll, \autoref{eq:rotation} shows this.\bigskip
+A 3-D rotation can always be described by a sequence of 3 partial rotations, a yaw, a pitch and a roll. It is important to note that the decomposition from rotation matrix to its components is done according to a convention. This convention states the order in which the rotations are done, if these are switched, the decomposition will be wrong. The convention I will use is the Tait-Bryan convention as follows: pitch, yaw, roll, \autoref{eq:rotation} shows this.\bigskip
 \begin{figure}
     \centering
     \includegraphics[width=1\textwidth]{figures/yaw_pitch_roll.png}
@@ -191,10 +222,10 @@ We need a way to describe the relationship between $P$ and $p$, the transformati
     \frac{y}{Y} = \frac{z}{Z} = \frac{f}{Z}
 \end{equation}
 Rewriting the equations above, we get the following coordinates for point $\vp$:
-\begin{equation}
+\begin{equation}\label{eq:im_proj1}
     x = f\frac{X}{Z}
 \end{equation}
-\begin{equation}
+\begin{equation}\label{eq:im_proj2}
     y = f\frac{Y}{Z}
 \end{equation}
 However, these are not linear equations of projection. To keep working with linear equations as long as possible for simplicity, we us an extended vector: 
@@ -401,9 +432,9 @@ written more compactly:
 The point $\vq_c$ is expressed in the coordinate system with the principal axis of the camera pointing straight down the $X_z$-axis. At the origin of this Euclidean coordinate system, the camera is located.
 
 \section{The general case: two views of a 3D point set}\label{sec:gen_case}
-In this section I will use point-to-point correspondences between two frames. I will discuss how to get these correspondences in \textbf{REF}, for now let us assume we have found these correspondences already.\bigskip
+In this section I will use point-to-point correspondences between two frames. I will discuss how to get these correspondences in \autoref{chap:found_mot_est}, for now let us assume we have found these correspondences already.\bigskip
 
-In general, we have a perspective model because we work with a camera that can be simplified to the pinhole camera model as described in \autoref{sec:cammodel}. The equations that relate motion to the image coordinates are non-linear in the motion parameters \cite{tekalp}. A two-step linear algorithm was developed in order to get the motion parameters from (at least eight) point correspondences. Doing this, an intermediate essential matrix $\ME$, consisting of the so called essential parameters is estimated. The way this algorithm works will be discussed in detail later on.
+In general, we have a perspective model because we work with a camera that can be simplified to the pinhole camera model as described in \autoref{sec:cammodel}. The equations that relate motion to the image coordinates are non-linear in the motion parameters \cite{tekalp}. A two-step linear algorithm has been developed by T. S. Huang \cite{improc} in order to get the motion parameters from (at least eight) point correspondences. Doing this, an intermediate essential matrix $\ME$, consisting of the so called essential parameters is estimated. The way this algorithm works will be discussed in detail later on.
 
 \subsubsection{Essential matrix}
 The essential matrix encodes the epipolar geometry of two images. Thus, to break down the essential matrix, we need to have a look at epipolar geometry. \autoref{fig:epigeo} shows a camera in two positions $O_L$ and $O_R$. Point $X$ is projected onto the left image plane resulting in $X_L$ and onto the right image plain resulting in $X_R$.\bigskip
@@ -414,12 +445,12 @@ From the perspective of $O_L$, the line $X-O_L$ is a single point $X_L$ while fr
 
 When the projection $X_L$ onto the left image plane is known as well as the epipolar line $e_R-X_R$ and point $X$ is projected onto the right image plane: $X_R$ evidently laying on the epipolar line, then each point observed in one image must be observed in the other image on a known epipolar line. This gives us an epipolar constraint, that for each set of points it is possible to test whether they correspond to the same 3-D point. This epipolar constraint can be described by an essential matrix.\bigskip
 
-The essential matrix maps a point in one image to an epipolar line in the other image. If you take a point in one image and multiply it by the essential matrix, you will get the epipolar line on the other image. This essential matrix can then be decomposed into the rotation matrix and translation vector, in \autoref{ssec:essentialmat} I will discuss in detail how to estimate and then decompose the essential matrix.
+The essential matrix maps a point in one image to an epipolar line in the other image. If you take a point in one image and multiply it by the essential matrix, you will get the epipolar line on the other image. This essential matrix can then be decomposed into the rotation matrix and translation vector, in \autoref{ssec:essentialmat} I will discuss in detail how to estimate and then decompose the essential matrix.\bigskip
 
 \begin{figure}
     \centering
     \includegraphics[width=1\textwidth]{figures/epipolar_geometry.png}
-    \caption{Epipolar geometry (image found on \textit{en.wikipedia.org/wiki/Epipolar\_geometry}}
+    \caption{Epipolar geometry (source: \textit{en.wikipedia.org/wiki/Epipolar\_geometry})}
     \label{fig:epigeo}
 \end{figure}
 
@@ -515,7 +546,7 @@ As stated before, one of the essential parameters will be set to one. Take $e_9 
     = -1
 \end{equation}
 
-This linear equation in eight essential parameters can be set up as a system of $N$ linear equations in 8 unknowns. To solve this, we need at least $N \geq 8$ keypoint matches. The solution of this equation gives the essential matrix $\ME$ up to a scale factor (as discussed before). We took $e_9$ as the scale factor, but all of the other essential parameters could have been chosen as well. When using this method, $e_i, i = 1,...,9$ will be chosen based on the condition number, the $e_i$ that yields the smallest condition number will be chosen as scale factor.
+This linear equation in eight essential parameters can be set up as a system of $N$ linear equations in 8 unknowns. To solve this, we need at least $N \geq 8$ keypoint matches. The solution of this equation gives the essential matrix $\ME$ up to a scale factor (as discussed before). We took $e_9$ as the scale factor, but all of the other essential parameters could have been chosen as well. When using this method, $e_i, i = 1,...,9$ will be chosen based on the condition number, the $e_i$ that yields the smallest condition number will be chosen as scale factor.\bigskip
 
 To have a solution for this equation, the coefficient matrix needs to have full rank, \cite{tekalp} states that this is the case if $\vt \neq 0$ and the shape of the 3-D surface satisfies certain conditions, called the surface constraint.
 
@@ -596,27 +627,55 @@ By solving these equations to $\boldsymbol{r_1}$, $\boldsymbol{r_2}$ and $\bolds
 
 
 \section{The planar case: two views of points on a plane}
-Once again, as in \autoref{sec:gen_case} we will assume we have found point-to-point correspondences between two frames.
+Once again, as in \autoref{sec:gen_case} we will assume we have found point-to-point correspondences between two frames.\bigskip
 
-When all points lay in one plane, the general case with the essential matrix does not work. The Essential matrix cannot be determined from such a set of points. Fortunately, there is another way to deal with this case. To do this, I need to introduce the term Homography. \bigskip
+When all points lay in one plane, the general case with the essential matrix does not work. The Essential matrix cannot be determined from such a set of points. Fortunately, there is another way to deal with this case. To do this, I need to introduce the term \newterm{homography}. \bigskip
 
-A homography relates the transformation between two planes up to a scaling factor. I will discuss the scale ambiguity later. A homography matrix is a $3\times3$ matrix with 8 degrees of freedom as we have an unknown scale factor.\bigskip
+Take a certain planar surface, when you have two images of this surface, a homography will describe the relation between that planar surface in these two images (when using the pin hole camera model). A homography is a projection between two such images.\bigskip
 
-If we have a planar surface $P = (x, y, 1)^T$, then after transforming this plane (by e.g. changing the camera angle) it will be transformed to $P' = (x', y', 1)^T$. The transformation from $P$ to $P'$ can be expressed using the homography matrix like this:
+Such a planar surface in 3-D is defined like this:
+\begin{equation}\label{eq:plane}
+    n_1X_1 + n_2X_2 + n_3X_3 = 1
+\end{equation}
+Where $\vn = (n_1, n_2, n_3)^T$ is the normal vector of that given plane.\bigskip
+
+A point $P = (P_1, P_2, P_3)^T$ is a point of this plane, assuming it fits in \autoref{eq:plane}. When taking an image, point $P$ will be projected onto the image plane following the pinhole camera model projection that is described by \autoref{eq:im_proj1} and \autoref{eq:im_proj2}. Accounting for the camera parameters, using \autoref{eq:improj}, each image will have its own projection of this point $P$, let us call them $P^*_1$ and $P^*_2$:
 \begin{equation}
-    s\begin{pmatrix}
-        x' \\ y' \\ 1
-    \end{pmatrix} = \MH \begin{pmatrix}
-        x \\ y \\ 1
+    P^*_1 = \begin{pmatrix}
+        f_1 & 0 & h_{1,x} & 0\\ 
+        0 & f_1 & h_{1,y} & 0\\ 
+        0 & 0 & 1 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        P_1 \\ P_2 \\ P_3 \\ 1
     \end{pmatrix}
 \end{equation}
-$s$ being the unknown scale factor. Note that we are using homogeneous coordinates instead of euclidean coordinates.\bigskip
+\begin{equation}
+    P^*_2 = \begin{pmatrix}
+        f_2 & 0 & h_{2,x} & 0\\ 
+        0 & f_2 & h_{2,y} & 0\\ 
+        0 & 0 & 1 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        P_1 \\ P_2 \\ P_3 \\ 1
+    \end{pmatrix}
+\end{equation}
+Note that each of these points is written in homogeneous coordinates.
 
-It is clear that it is possible to estimate a homography matrix if we have multiple corresponding points on both planar surfaces. This homography can then be decomposed into the rotation matrix, translation vector and normal vector. How to estimate the homography and how to decompose it will be discussed in detail later on.
+The relation between these two points can be described like this:
+\begin{equation}
+    sP^*_1 =   \MK(\MR + \vt\vn^T)\MK^{-1}P^*_2
+\end{equation}
+and we define $\MH$ like this:
+\begin{equation}
+    \MH = (\MR + \vt\vn^T)
+\end{equation}
 
-\subsection{Planar case: Homography}
+It is possible to estimate a homography matrix if we have multiple corresponding points on both planar surfaces. It has been shown that this homography can then be decomposed into the rotation matrix, translation vector and normal vector by Huang et al. \cite{506592e3b5484e57928e215df49a83cb}. How to estimate the homography and how to decompose it will be discussed in detail in in \autoref{ssec:est_homography}.
 
-When all keypoints lie on a planar surface, we have to treat it differently as the essential matrix can not be estimated when all points lie on a single plane. When all points lie on a planar surface, we can use that fact that a Homography $\MH$ describes the transformation of that planar surface. For this we only look at the points below the horizon on the road surface. Then all keypoints lie on a plane that can be described as
+\subsection{Planar case: Homography}\label{ssec:est_homography}
+
+When all keypoints lie on a planar surface, we have to treat it differently as the essential matrix can not be estimated when all points lie on a single plane. When all points lie on a planar surface, we can use that fact that a homography $\MH$ describes the transformation of that planar surface. For this we only look at the points below the horizon on the road surface. Then all keypoints lie on a plane that can be described as
 \begin{equation}
     aX_1 + bX_2 + cX_3 = 1
 \end{equation}
