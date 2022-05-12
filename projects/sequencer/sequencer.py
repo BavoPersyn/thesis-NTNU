@@ -249,6 +249,7 @@ class Sequencer:
             elif key == ord('t'):
                 good_matches = self.select_keypoints(index, title)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+                image = self.reduce_contrast(image)
                 image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
                 color = (0, 255, 0)
                 for match in good_matches:
@@ -385,28 +386,27 @@ class Sequencer:
         return good_matches
 
     def test(self):
-        img = self.reduce_contrast(self.imageFifo[0])
-        # converted to BGR so keypoints can be shown in color
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
-        points = self.pointsFifo[0][0]
-        for i in range(len(points)):
-            point = (int(points[i].pt[0]), int(points[i].pt[1]))
-            color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-            above = (self.a * int(point[0]) + self.b * int(point[1]) + self.c) < 0
-            if above:
-                continue
-            img = cv2.circle(img, point, radius=6, color=color, thickness=3)
-            # img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
-            # img = cv2.line(img, point1, point2, color=color, thickness=2)
-            # horizon line
-        img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
-        cv2.imshow("unfiltered", img)
+        kp1, des1 = self.dispose(self.pointsFifo[0])
+        kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
+        des1 = des1.astype('uint8')
+        matches = self.matcher.match(des1, des2)
+        image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+        image = self.reduce_contrast(image)
+        image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+        for match in matches:
+            point1 = [int(kp1[match.queryIdx][0]), int(kp1[match.queryIdx][1])]
+            point2 = [int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1])]
+            color = (255, 0, 0)
+            # image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
+            # image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
+            image = cv2.line(image, point1, point2, color=color, thickness=2)
+        cv2.imshow('title', image)
         cv2.waitKey(0)
+        cv2.destroyWindow('title')
 
     def select_keypoints(self, index, title):
         point_type = input("\n0. Homography\n1. Essential")
-        while point_type != 0 and point_type != 1:
+        while point_type != '0' and point_type != '1':
             point_type = input("\n0. Homography\n1. Essential")
         if point_type == 0:
             filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + '-' \
@@ -434,12 +434,13 @@ class Sequencer:
             image = cv2.line(image, point1, point2, color=color, thickness=2)
             cv2.imshow(title, cv2.resize(image, (int(self.width/1.25), int((self.height-self.horizon)/1.25))))
             # cv2.waitKey()
-            patch1 = img1[point1[1] - self.WINDOW // 2:point1[1] + self.WINDOW // 2,
-                     point1[0] - self.WINDOW // 2: point1[0] + self.WINDOW // 2]
-            patch2 = img2[point2[1] - self.WINDOW // 2:point2[1] + self.WINDOW // 2,
-                     point2[0] - self.WINDOW // 2:point2[0] + self.WINDOW // 2]
+            cross_color1 = (255, 255, 255)
+            cross_color2 = (255, 255, 255)
 
+            patch1 = self.create_patch(img1, point1)
+            patch2 = self.create_patch(img2, point2)
             patches = np.hstack((patch1, patch2))
+
             patches = cv2.resize(patches, (20 * self.WINDOW, 10 * self.WINDOW))
             cv2.imshow("patches", patches)
             k = cv2.waitKey(0)
@@ -450,6 +451,18 @@ class Sequencer:
         cv2.destroyWindow("patches")
         np.savetxt(filename, np.array(good_matches).reshape(len(good_matches), 4), fmt='%i', delimiter=",")
         return np.array(good_matches)
+
+    def create_patch(self, image, point):
+        cross_color = (255, 255, 255)
+        patch = image[point[1] - self.WINDOW // 2:point[1] + self.WINDOW // 2,
+                 point[0] - self.WINDOW // 2: point[0] + self.WINDOW // 2]
+        black = np.average(patch) < 128
+        if not black:
+            cross_color = (0, 0, 0)
+        patch = cv2.line(patch, (self.WINDOW//2, 0), (self.WINDOW//2, self.WINDOW), cross_color)
+        patch = cv2.line(patch, (0, self.WINDOW//2), (self.WINDOW, self.WINDOW//2), cross_color)
+
+        return patch
 
     def dispose(self, kp_des):
         kps = np.array([])
