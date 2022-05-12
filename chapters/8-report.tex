@@ -45,11 +45,12 @@ The car itself is not moving relative to the camera, as the camera is fixed to t
     \label{fig:output_image}
 \end{figure}
 
-\section{Frame-to-frame 2D motion analysis}
-We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix $\MR$, translation vector $\vt$ and normal vector $\vn$ must be calculated. These can be calculated using keypoints in the frames. 
+\section{Finding keypoints}
+When the next image is loaded into the FIFO, we can detect the keypoints. As discussed in \autoref{sec:orb}, we use ORB. To find the keypoints we use the method \textit{detectAndCompute} on this image, additionally this method gives for every keypoint the descriptor which will be used to match the keypoints. We set the maximum amount of keypoints to a high 8000 for now. As we will be using only a part of these, it is not the best strategy computation wise. However, this ensures that we have enough keypoints as the road surface does not always have a lot of texture. \bigskip
 
-\subsection{Finding keypoints}
-When the next image is loaded into the FIFO, we can detect the keypoints. As discussed in \autoref{sec:orb}, we use ORB. To find the keypoints we use the method \textit{detectAndCompute} on this image. We set the maximum amount of keypoints to a high 8000 for now. As we'll be using only a part of these, it isn't the best strategy computation wise. However, this ensures that we have enough keypoints as the road surface does not always have a lot of texture. \bigskip
+\autoref{fig:unfiltered} shows the keypoints that are detected using this method. There are a few things we can learn from this visualisation of the keypoints. First of all it is clear that we don't have much keypoints that are part of the road surface. This does not come as surprise as the road surface does not contain a lot of texture. More keypoints can be found on the objects standing on the road as these have more texture.\bigskip
+
+Secondly, we want our keypoints to be evenly spread across the canvas which is absolutely not the case. The keypoints come in clusters, densely packed on the objects on the road but also far above the horizon. I will explain how to deal with this in \autoref{ssec:bucketing}. As stated before, we have a maximum of 8000 keypoints which is rather high, this excess is clearly visible in \autoref{fig:unfiltered} as well.
 
 \begin{figure}
     \centering
@@ -58,14 +59,17 @@ When the next image is loaded into the FIFO, we can detect the keypoints. As dis
     \label{fig:unfiltered}
 \end{figure}
 
-\subsection{Filtering keypoints}\label{ssec:filtering}
+\section{Filtering keypoints}\label{sec:filtering}
 
-\autoref{fig:unfiltered} shows a frame with it's detected keypoints. Two things are clear: we have an excess of keypoints and they come in certain clusters. Thus we need to remove a big chunk of these keypoints, while trying to ensure we have a keypoint from the different clusters. To do this we work with a bucketing system. This means the image is divided into buckets. A bucket is a patch of the image, patches have no overlap and all patches together form the image.\bigskip 
+Due to the reason stated, we need to remove a big chunk of these keypoints, while trying to ensure we have a keypoint from the different clusters. 
+
+\subsection{Bucketing keypoints}\label{ssec:bucketing}
+To do this I introduce a bucketing system, I created this simple system with only one goal: ensuring one keypoint per bucket (if there is at least one keypoint present in that area). The system does not take the value of the keypoint or anything else in consideration. If I were to discover that the outcome of keypoints is not sufficient, I could always make the selection process for each bucket more elaborate.\bigskip
 
 The reason we have to use this bucketing system and remove the overall clustering of the keypoints can be found in \cite{6153423}. Fraundorfer and Scaramuzza state that "the keypoints should cover the image as evenly as possible".\bigskip 
 
 
-Practically we divided the image in a grid of 40 by 20, leaving us with 800 buckets. Each of these buckets will have a maximum of 1 keypoint at the end, of course if there was no keypoint present in a bucket before filtering, there will not be a keypoint after filtering. \autoref{fig:bucketing} shows the result after filtering out the keypoints using the bucketing system.\bigskip
+Practically, I divided the image in a grid of 40 by 20, leaving us with 800 buckets. Each of these buckets will have a maximum of 1 keypoint at the end, of course if there was no keypoint present in a bucket before filtering, there will not be a keypoint after filtering. For every keypoint, I check in which bucket it would be put based on its location. If that bucket is still empty, I add the keypoint to that bucket, if not, I go on to the next bucket until all buckets are filled or there are no keypoints that could be put in an empty bucket. \autoref{fig:bucketing} shows the result after filtering out the keypoints using the bucketing system.\bigskip
 
 \begin{figure}
     \centering
@@ -74,6 +78,7 @@ Practically we divided the image in a grid of 40 by 20, leaving us with 800 buck
     \label{fig:bucketing}
 \end{figure}
 
+\subsection{Removing keypoints above the horizon}
 As discussed before, we are looking for keypoints that are part of the road surface. Keypoints above the horizon can thus be discarded as we can say with absolute certainty that these will not be a part of the road surface. For now, we will determine the horizon empirically, in a later stage, when we have found the normal vector $\vn$ it will be possible to estimate the horizon based on this.\bigskip
 
 As stated before, the footage we have is from a camera that is mounted tilted. This means we are not able to simply discard all keypoints above a horizontal line. We describe the horizon as a linear equation of the form
@@ -115,12 +120,14 @@ For now an estimation suffices so we chose two points empirically. In \autoref{s
 
 For illustrating purposes, the contrast in the images is lowered by mapping the gray values between [0, 255] to [128, 255]. By doing this, the image is still clearly visible to the human eye but keypoints and the motion vectors are more visible.
 
-\subsection{Matching keypoints}
-The point in finding the keypoints is to know where these specific points are in another image. Note that the filtering described in \autoref{ssec:filtering} is only done on the oldest image. If we were to filter both images, chances are big we would be left with no good matches. After all, there is no way of guaranteeing that the right match of a keypoint that is not filtered will also be unfiltered in the second image.\bigskip
+\section{Matching keypoints}
+The point in finding the keypoints is to know where these specific points are in another image. Note that the filtering described in \autoref{sec:filtering} is only done on the oldest image. If we were to filter both images, chances are big we would be left with no good matches. After all, there is no way of guaranteeing that the right match of a keypoint that is not filtered will also be unfiltered in the second image.\bigskip
+
+\subsection{Descriptor based matching}
 
 We use a brute force Hamming descriptor matcher, this means matches are made based on the Hamming distance between descriptors. Brute force means that every possible match is made for a certain keypoint after which the best match for that specific keypoint is chosen. The OpenCV \textit{match} method returns a list of matches based on this principle.\bigskip
 
-When we look at the matches, draw both keypoints and connect them, what we should see is a bunch of motion vectors. However, looking at \autoref{fig:matches}, this is clearly not the case. Not all the matches we got are good matches, so once again we have to filter out the good ones.\bigskip
+When we look at the matches, draw both keypoints and connect them, what we should see is a bunch of motion vectors. However, looking at \autoref{fig:matches}, it is clear that this is not the case. Not all the matches we got are good matches, so once again we have to filter out the good ones.\bigskip
 
 \begin{figure}
     \centering
@@ -129,7 +136,8 @@ When we look at the matches, draw both keypoints and connect them, what we shoul
     \label{fig:matches}
 \end{figure}
 
-The algorithm to calculate the homography is very prone to even the smallest outliers and mistakes. To prevent this, we look at the estimated matches one by one to look if it is actually a good match. We look at patches from around both keypoints while also factoring in the motion vector. \autoref{fig:match_check} shows a screenshot of this process. This is clearly a good match, the two patches are very similar and the motion vector drawn is plausible in this scenario. \autoref{fig:bad_match} however shows a match that is clearly a mistake, this match will not be considered anymore.\bigskip
+\subsection{Manually selecting keypoint matches}
+The algorithm to calculate the homography is very prone to even the smallest outliers and mistakes. To prevent this, we look at the estimated matches one by one to look if it is actually a good match. We look at patches from around both keypoints while also factoring in the motion vector. A crosshair is drawn onto the patch to be able to better identify whether the keypoint is located at the same point \autoref{fig:match_check} shows a screenshot of this process. This is clearly a good match, the two patches are very similar and the motion vector drawn is plausible in this scenario. \autoref{fig:bad_match} however shows a match that is clearly a mistake, this match will not be considered anymore.\bigskip
 
 Recall that we are looking for a homography between the ground plane in the two frames. So we can only use keypoints that are on the road surface. While checking if the keypoints are correctly matched, we also check if this is the case. After checking all this, we are left with good matches between keypoints in the two frames, that are part of the road surface.
 
@@ -145,6 +153,15 @@ Recall that we are looking for a homography between the ground plane in the two 
     \caption{Wrongly matched keypoints}
     \label{fig:bad_match}
 \end{figure}
+
+\section{Using known motion as bias for further estimating}
+It is clear that what I have described in the previous sections is a lot of work that has to be done manually. Recall that the goal is to have a system that can do all this autonomously. Manually selecting keypoints and checking each match for its validity is hardly autonomous. However, I intend to do this only once, to "jump start" the system.\bigskip 
+
+Once the system has an initial idea of the motion, that is translation and rotation, of the vehicle as well as an estimate of the normal vector of the road surface, it is possible to use these in order to narrow down the search for keypoints, matches etc.\bigskip
+
+Suppose, after carefully selecting and matching keypoints manually, we have a good estimate for the motion of the vehicle. It is then possible to estimate where the known keypoints will be located approximately after this motion continued to the next frame. Assuming the motion stays exactly the same is of course wrong, but given that frame are taken in short interval (in our case $1/30^{th}$ of a second) we can assume that the motion will not differ that much so we have a rough idea of where to look for the keypoints we encountered in the previous frame.\bigskip
+
+When using this way of recursively using the previous detected keypoints and motion as bias, the search for and matching of keypoints will be easier as there is less space to look for and thus also faster. It goes without saying that a good bias is important, that is why we need to carefully select the good keypoints and matches. 
 
 \section{Estimating 3D motion from sets of 2D point correspondences}
 \subsection{Determining motion}
