@@ -31,3 +31,7 @@ One way to match the keypoints is a Brute-Force Matcher. It is a rather simple m
 
 ---------------------
 A homography relates the transformation between two planes up to a scaling factor. I will discuss the scale ambiguity later. A homography matrix is a $3\times3$ matrix with 8 degrees of freedom as we have an unknown scale factor.\bigskip
+
+\section{Frame-to-frame 2D motion analysis}
+We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix $\MR$, translation vector $\vt$ and normal vector $\vn$ must be calculated. These can be calculated using keypoints in the frames. 
+
