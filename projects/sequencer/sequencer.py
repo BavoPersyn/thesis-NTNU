@@ -110,6 +110,9 @@ class Sequencer:
     FOV_V = 55
     FOV_H = 94.4
     WINDOW = 15
+    CAMERA_ANGLE_X = 15
+    CAMERA_ANGLE_Y = 0
+    CAMERA_ANGLE_Z = 15
 
     def __init__(self):
         self.y2 = 0
