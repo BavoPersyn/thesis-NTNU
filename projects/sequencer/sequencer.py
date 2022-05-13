@@ -386,17 +386,43 @@ class Sequencer:
             elif key == ord('u'):
                 self.test()
             elif key == ord('v'):
-                eof = self.add_next_image(sequence, index)
-                exists, H = self.find_homography(index, title)
+                exists, H, points = self.find_homography(index, title)
                 if not exists:
                     print("No homography found")
-                self.to_birds_eye_view(self.buffer, H)
+                    continue
+                retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
+                for i in range(retval):
+                    if self.check_possibility(rotations[i], translations[i], normals[i], points):
+                        print(rotations[i], '\n', translations[i], '\n', normals[i], '\n', np.linalg.norm(translations[i]))
+            elif key == ord('r'):
+                print(make_rotation_matrix(math.pi/2, math.pi/2, math.pi/2))
+                print(rot_mat(90, 90, 90, False))
             elif key == ord('q'):
                 eof = True
             else:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def check_possibility(self, rotation, translation, normal, points):
+        # If translation goes negative along z-axis: car is going backwards so not possible
+        if translation[2] < 0:
+            return False
+        n = np.transpose(normal)
+        r = np.transpose(rotation)
+        nr = np.matmul(n, r)
+        nrt = np.matmul(nr, translation)
+        test_value = 1 + nrt
+        # 1 + n^TR^Tt should be bigger then 0
+        if test_value < 0:
+            return False
+        for point in points:
+            m = [point[0], point[1], 1]
+            test_value = np.matmul(np.transpose(m), normal)
+            if test_value < 0:
+                return False
+        return True
+
 
     def to_birds_eye_view(self, image, h):
         out = cv2.warpPerspective(image, h, (self.width, self.height))
@@ -415,14 +441,14 @@ class Sequencer:
             i += 1
         if i < 4:
             print("Not enough matches")
-            return False, None
+            return False, None, None
         # print("Calculating Homography:")
         H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
         # print(H)
         # print("Decomposing Homography")
         retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
         self.update_transformations(rotations[0], translations[0])
-        return True, H
+        return True, H, points2
 
     def find_essential(self, index, title):
         # Calculate homography and decompose it
@@ -463,35 +489,28 @@ class Sequencer:
         else:
             return
         if not path.exists(filename):
-            good_matches = self.select_keypoints(index, title)
+            good_matches = self.select_keypoints(index, title, point_type)
             good_matches = good_matches.reshape(len(good_matches), 4)
         else:
             good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
         return good_matches
 
     def test(self):
-        kp1, des1 = self.dispose(self.pointsFifo[0])
-        kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
-        des1 = des1.astype('uint8')
-        matches = self.matcher.match(des1, des2)
-        image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-        image = self.reduce_contrast(image)
-        image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
-        for match in matches:
-            point1 = [int(kp1[match.queryIdx][0]), int(kp1[match.queryIdx][1])]
-            point2 = [int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1])]
-            color = (255, 0, 0)
-            # image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
-            # image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
-            image = cv2.line(image, point1, point2, color=color, thickness=2)
-        cv2.imshow('title', image)
-        cv2.waitKey(0)
-        cv2.destroyWindow('title')
+        k = ''
+        while k != ord('q'):
+            angle = input("Give angle: ")
+            angle = int(angle)
+            rotated = rotate_image(self.buffer, angle)
+            cv2.imshow("rotated", rotated)
+            k = cv2.waitKey(0)
+        cv2.destroyWindow("rotated")
 
-    def select_keypoints(self, index, title):
-        point_type = input("\n0. Homography\n1. Essential")
-        while point_type != '0' and point_type != '1':
+    def select_keypoints(self, index, title, point_type=-1):
+        if point_type == -1:
             point_type = input("\n0. Homography\n1. Essential")
+            while point_type != '0' and point_type != '1':
+                point_type = input("\n0. Homography\n1. Essential")
+        point_type = int(point_type)
         if point_type == 0:
             filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + '-' \
                    + str(int(index - 1)).zfill(5) + '.txt '
