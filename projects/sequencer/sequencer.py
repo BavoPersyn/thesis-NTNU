@@ -11,6 +11,97 @@ from math import tan
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+
+def rotate_image(image, angle):
+    height, width = image.shape[:2]
+    center = (width / 2, height / 2)
+    R = cv2.getRotationMatrix2D(center, angle, 1)
+    rotated = cv2.warpAffine(image, R, (width, height))
+    return rotated
+
+
+def rotation_matrix_to_euler_angles(rotation_matrix):
+    sy = math.sqrt(rotation_matrix[0, 0] * rotation_matrix[0, 0] + rotation_matrix[1, 0] * rotation_matrix[1, 0])
+
+    singular = sy < 1e-6
+
+    if not singular:
+        x = math.atan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
+        y = math.atan2(-rotation_matrix[2, 0], sy)
+        z = math.atan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
+    else:
+        x = math.atan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
+        y = math.atan2(-rotation_matrix[2, 0], sy)
+        z = 0
+
+    return np.array([x, y, z])
+
+
+def reduce_contrast(image):
+    mapper = np.vectorize(lambda x: (x * 127) // 255 + 128)
+    image = mapper(image).astype(np.uint8)
+    return image
+
+
+def form_transformation_matrix(r, t):
+    T = np.zeros((4, 4))
+    T[3][3] = 1
+    for i in range(3):
+        for j in range(3):
+            T[i][j] = r[i][j]
+    for i in range(3):
+        T[i][3] = t[i]
+    return T
+
+
+def rad_to_deg(angle):
+    return  angle/(2 * math.pi) * 360
+
+
+def deg_to_rad(angle):
+    return angle/360.0 * 2 * math.pi
+
+
+def make_rotation_matrix(theta, psi, phi, radians=True):
+    if not radians:
+        theta = deg_to_rad(theta)
+        psi = deg_to_rad(psi)
+        phi = deg_to_rad(phi)
+    rx = np.array(
+          [[1,       0,            0],
+          [0, math.cos(theta), -math.sin(theta)],
+          [0, math.sin(theta), math.cos(theta)]])
+
+    ry = np.array(
+        [[math.cos(psi),  0, math.sin(psi)],
+        [0,              1,        0],
+        [-math.sin(psi), 0, math.cos(psi)]])
+
+    rz = np.array(
+        [[math.cos(phi), -math.sin(phi),   0],
+        [math.sin(phi), math.cos(phi),    0],
+        [0,               0,              1]])
+    rzy = np.matmul(rz, ry)
+    r = np.matmul(rzy, rx)
+    return r
+
+
+def rot_mat(theta, psi, phi, radians=True):
+    if not radians:
+        theta = deg_to_rad(theta)
+        psi = deg_to_rad(psi)
+        phi = deg_to_rad(phi)
+    c1 = np.cos(theta)
+    s1 = np.sin(theta)
+    c2 = np.cos(psi)
+    s2 = np.sin(psi)
+    c3 = np.cos(phi)
+    s3 = np.sin(phi)
+    matrix = np.array([[c1 * c2, c1 * s2 * s3 - c3 * s1, s1 * s3 + c1 * c3 * s2],
+                       [c2 * s1, c1 * c3 + s1 * s2 * s3, c3 * s1 * s2 - c1 * s3],
+                       [-s2, c2 * s3, c2 * c3]])
+    return matrix
+
 class Sequencer:
     SEQ_NUM = 1
     BUF_SIZ = 2
