@@ -320,8 +320,8 @@ class Sequencer:
                 file = open(self.folder + "/points/IMG" + str(int(index - 2)).zfill(5) +
                             "-" + str(int(index - 1)).zfill(5) + ".txt", "a")
                 (points1, points2) = self.detect_and_match()
-                im1 = self.reduce_contrast(self.imageFifo[-2])
-                im2 = self.reduce_contrast(self.imageFifo[-1])
+                im1 = reduce_contrast(self.imageFifo[-2])
+                im2 = reduce_contrast(self.imageFifo[-1])
                 goodpoints = []
                 for i in range(0, len(points1)):
                     image = np.vstack((im1, im2))
@@ -343,7 +343,7 @@ class Sequencer:
             elif key == ord('t'):
                 good_matches = self.select_keypoints(index, title)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-                image = self.reduce_contrast(image)
+                image = reduce_contrast(image)
                 image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
                 color = (0, 255, 0)
                 for match in good_matches:
@@ -355,7 +355,7 @@ class Sequencer:
                 key = None
                 while not key == ord('h') and not eof:
                     eof = self.add_next_image(sequence, index)
-                    exists, = self.find_homography(index, title)
+                    exists, H = self.find_homography(index, title)
                     if not exists:
                         break
                     out = self.show_image(None, self.imageFifo[0])
@@ -373,7 +373,7 @@ class Sequencer:
                 # Load stored matches and show motion vectors
                 good_matches = self.load_points(index, title)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-                image = self.reduce_contrast(image)
+                image = reduce_contrast(image)
                 image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
                 for match in good_matches:
                     point1 = (match[0], match[1])
@@ -443,24 +443,14 @@ class Sequencer:
         return True
 
     def update_transformations(self, rotation, translation):
-        T = self.form_transformation_matrix(rotation, translation)
+        T = form_transformation_matrix(rotation, translation)
         self.transformation = np.matmul(self.transformation, T)
         current_position = np.array([self.transformation[0][3],
                                      self.transformation[1][3],
                                      self.transformation[2][3]])
         self.positions = np.append(self.positions, [current_position], axis=0)
-        angles = self.rotationMatrixToEulerAngles(rotation)
+        angles = rotation_matrix_to_euler_angles(rotation)
         self.angles = np.append(self.angles, [angles], axis=0)
-
-    def form_transformation_matrix(self, r, t):
-        T = np.zeros((4, 4))
-        T[3][3] = 1
-        for i in range(3):
-            for j in range(3):
-                T[i][j] = r[i][j]
-        for i in range(3):
-            T[i][3] = t[i]
-        return T
 
     def load_points(self, index, title, point_type=0):
         # point_type 0 is points on a plane->homography, type 1 is all points->essential matrix
@@ -667,7 +657,7 @@ class Sequencer:
         return image
 
     def show_image(self, points, image):
-        img = self.reduce_contrast(image)
+        img = reduce_contrast(image)
         # converted to BGR so keypoints can be shown in color
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
@@ -686,27 +676,6 @@ class Sequencer:
 
     def cropped_to_original(self, coordinate):
         return [coordinate[0], coordinate[1] + self.horizon]
-
-    def rotationMatrixToEulerAngles(self, rotation_matrix):
-        sy = math.sqrt(rotation_matrix[0, 0] * rotation_matrix[0, 0] + rotation_matrix[1, 0] * rotation_matrix[1, 0])
-
-        singular = sy < 1e-6
-
-        if not singular:
-            x = math.atan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
-            y = math.atan2(-rotation_matrix[2, 0], sy)
-            z = math.atan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
-        else:
-            x = math.atan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
-            y = math.atan2(-rotation_matrix[2, 0], sy)
-            z = 0
-
-        return np.array([x, y, z])
-
-    def reduce_contrast(self, image):
-        mapper = np.vectorize(lambda x: (x * 127) // 255 + 128)
-        image = mapper(image).astype(np.uint8)
-        return image
 
     def plot_positions(self):
         xdata = np.array([])
@@ -732,3 +701,5 @@ class Sequencer:
         self.angles_plot.canvas.draw()
         self.angles_plot.show()
 
+    def vcf_to_ccf(self, vector):
+        return
