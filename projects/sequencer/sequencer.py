@@ -55,11 +55,11 @@ def form_transformation_matrix(r, t):
 
 
 def rad_to_deg(angle):
-    return angle/(2 * math.pi) * 360
+    return angle / (2 * math.pi) * 360
 
 
 def deg_to_rad(angle):
-    return angle/360.0 * 2 * math.pi
+    return angle / 360.0 * 2 * math.pi
 
 
 def make_rotation_matrix(theta, psi, phi, radians=True):
@@ -68,19 +68,19 @@ def make_rotation_matrix(theta, psi, phi, radians=True):
         psi = deg_to_rad(psi)
         phi = deg_to_rad(phi)
     rx = np.array(
-          [[1,       0,            0],
-          [0, math.cos(theta), -math.sin(theta)],
-          [0, math.sin(theta), math.cos(theta)]])
+        [[1, 0, 0],
+         [0, math.cos(theta), -math.sin(theta)],
+         [0, math.sin(theta), math.cos(theta)]])
 
     ry = np.array(
-        [[math.cos(psi),  0, math.sin(psi)],
-        [0,              1,        0],
-        [-math.sin(psi), 0, math.cos(psi)]])
+        [[math.cos(psi), 0, math.sin(psi)],
+         [0, 1, 0],
+         [-math.sin(psi), 0, math.cos(psi)]])
 
     rz = np.array(
-        [[math.cos(phi), -math.sin(phi),   0],
-        [math.sin(phi), math.cos(phi),    0],
-        [0,               0,              1]])
+        [[math.cos(phi), -math.sin(phi), 0],
+         [math.sin(phi), math.cos(phi), 0],
+         [0, 0, 1]])
     rzy = np.matmul(rz, ry)
     r = np.matmul(rzy, rx)
     return r
@@ -101,6 +101,7 @@ def rot_mat(theta, psi, phi, radians=True):
                        [c2 * s1, c1 * c3 + s1 * s2 * s3, c3 * s1 * s2 - c1 * s3],
                        [-s2, c2 * s3, c2 * c3]])
     return matrix
+
 
 class Sequencer:
     SEQ_NUM = 1
@@ -393,9 +394,10 @@ class Sequencer:
                 retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
                 for i in range(retval):
                     if self.check_possibility(rotations[i], translations[i], normals[i], points):
-                        print(rotations[i], '\n', translations[i], '\n', normals[i], '\n', np.linalg.norm(translations[i]))
+                        print(rotations[i], '\n', translations[i], '\n', normals[i], '\n',
+                              np.linalg.norm(translations[i]))
             elif key == ord('r'):
-                print(make_rotation_matrix(math.pi/2, math.pi/2, math.pi/2))
+                print(make_rotation_matrix(math.pi / 2, math.pi / 2, math.pi / 2))
                 print(rot_mat(90, 90, 90, False))
             elif key == ord('q'):
                 eof = True
@@ -422,7 +424,6 @@ class Sequencer:
             if test_value < 0:
                 return False
         return True
-
 
     def to_birds_eye_view(self, image, h):
         out = cv2.warpPerspective(image, h, (self.width, self.height))
@@ -481,11 +482,13 @@ class Sequencer:
     def load_points(self, index, title, point_type=0):
         # point_type 0 is points on a plane->homography, type 1 is all points->essential matrix
         if point_type == 0:
-            filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
-            5) + '.txt'
+            filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + "-" + str(
+                int(index - 1)).zfill(
+                5) + '.txt'
         elif point_type == 1:
-            filename = self.folder + '/points/essential/IMG' + str(int(index - 2)).zfill(5) + "-" + str(int(index - 1)).zfill(
-            5) + '.txt'
+            filename = self.folder + '/points/essential/IMG' + str(int(index - 2)).zfill(5) + "-" + str(
+                int(index - 1)).zfill(
+                5) + '.txt'
         else:
             return
         if not path.exists(filename):
@@ -513,7 +516,7 @@ class Sequencer:
         point_type = int(point_type)
         if point_type == 0:
             filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + '-' \
-                   + str(int(index - 1)).zfill(5) + '.txt '
+                       + str(int(index - 1)).zfill(5) + '.txt '
         else:
             filename = self.folder + '/points/essential/IMG' + str(int(index - 2)).zfill(5) + '-' \
                        + str(int(index - 1)).zfill(5) + '.txt '
@@ -535,7 +538,7 @@ class Sequencer:
             image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
             image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
             image = cv2.line(image, point1, point2, color=color, thickness=2)
-            cv2.imshow(title, cv2.resize(image, (int(self.width/1.25), int((self.height-self.horizon)/1.25))))
+            cv2.imshow(title, cv2.resize(image, (int(self.width / 1.25), int((self.height - self.horizon) / 1.25))))
             # cv2.waitKey()
             cross_color1 = (255, 255, 255)
             cross_color2 = (255, 255, 255)
@@ -558,12 +561,12 @@ class Sequencer:
     def create_patch(self, image, point):
         cross_color = (255, 255, 255)
         patch = image[point[1] - self.WINDOW // 2:point[1] + self.WINDOW // 2,
-                 point[0] - self.WINDOW // 2: point[0] + self.WINDOW // 2]
+                point[0] - self.WINDOW // 2: point[0] + self.WINDOW // 2]
         black = np.average(patch) < 128
         if not black:
             cross_color = (0, 0, 0)
-        patch = cv2.line(patch, (self.WINDOW//2, 0), (self.WINDOW//2, self.WINDOW), cross_color)
-        patch = cv2.line(patch, (0, self.WINDOW//2), (self.WINDOW, self.WINDOW//2), cross_color)
+        patch = cv2.line(patch, (self.WINDOW // 2, 0), (self.WINDOW // 2, self.WINDOW), cross_color)
+        patch = cv2.line(patch, (0, self.WINDOW // 2), (self.WINDOW, self.WINDOW // 2), cross_color)
 
         return patch
 
