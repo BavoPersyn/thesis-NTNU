@@ -508,8 +508,10 @@ class Sequencer:
         #     cv2.imshow("rotated", rotated)
         #     k = cv2.waitKey(0)
         # cv2.destroyWindow("rotated")
-        temp = self.vcf_to_ccf([10, 15, 0])
-        print(self.ccf_to_vcf(temp))
+        # temp = self.vcf_to_ccf([10, 15, 0])
+        # print(self.ccf_to_vcf(temp))
+        test_mat = [[1, 2, 3, 10], [4, 5, 6, 11], [7, 8, 9, 12], [0, 0, 0, 1]]
+        self.invert_transform_matrix(test_mat)
 
     def select_keypoints(self, index, title, point_type=-1):
         if point_type == -1:
@@ -740,3 +742,17 @@ class Sequencer:
         vcf = np.matmul(r_ccf_to_vcf, vcf)
         return vcf
 
+    def invert_transform_matrix(self, t_mat):
+        rotation = np.zeros((4, 4))
+        translation = np.zeros((4, 4))
+        # Transpose rotation part of T
+        rotation[3][3] = 1
+        for i in range(3):
+            for j in range(3):
+                rotation[i][j] = t_mat[j][i]
+        # Make translation part negative
+        for i in range(4):
+            translation[i][3] = -t_mat[i][3]
+            translation[i][i] = 1
+        new_t = np.matmul(rotation, translation)
+        return new_t
