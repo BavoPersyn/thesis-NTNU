@@ -111,9 +111,10 @@ class Sequencer:
     FOV_V = 55
     FOV_H = 94.4
     WINDOW = 15
-    CAMERA_ANGLE_X = 15
+    CAMERA_ANGLE_X = 0
     CAMERA_ANGLE_Y = 0
-    CAMERA_ANGLE_Z = 15
+    CAMERA_ANGLE_Z = -15
+    T_VCF_CCF = np.array([-0.5, 1, 0])
 
     def __init__(self):
         self.y2 = 0
@@ -499,14 +500,16 @@ class Sequencer:
         return good_matches
 
     def test(self):
-        k = ''
-        while k != ord('q'):
-            angle = input("Give angle: ")
-            angle = int(angle)
-            rotated = rotate_image(self.buffer, angle)
-            cv2.imshow("rotated", rotated)
-            k = cv2.waitKey(0)
-        cv2.destroyWindow("rotated")
+        # k = ''
+        # while k != ord('q'):
+        #     angle = input("Give angle: ")
+        #     angle = int(angle)
+        #     rotated = rotate_image(self.buffer, angle)
+        #     cv2.imshow("rotated", rotated)
+        #     k = cv2.waitKey(0)
+        # cv2.destroyWindow("rotated")
+        temp = self.vcf_to_ccf([10, 15, 0])
+        print(self.ccf_to_vcf(temp))
 
     def select_keypoints(self, index, title, point_type=-1):
         if point_type == -1:
@@ -724,4 +727,16 @@ class Sequencer:
         self.angles_plot.show()
 
     def vcf_to_ccf(self, vector):
-        return
+        r_vcf_to_ccf = make_rotation_matrix(self.CAMERA_ANGLE_X, self.CAMERA_ANGLE_Y, self.CAMERA_ANGLE_Z, radians=False)
+        ccf = np.matmul(r_vcf_to_ccf, vector)
+        ccf = np.add(ccf, self.T_VCF_CCF)
+        return ccf
+
+    def ccf_to_vcf(self, vector):
+        r_ccf_to_vcf = np.transpose(make_rotation_matrix(self.CAMERA_ANGLE_X,
+                                                         self.CAMERA_ANGLE_Y,
+                                                         self.CAMERA_ANGLE_Z, radians=False))
+        vcf = np.add(vector, np.negative(self.T_VCF_CCF))
+        vcf = np.matmul(r_ccf_to_vcf, vcf)
+        return vcf
+
