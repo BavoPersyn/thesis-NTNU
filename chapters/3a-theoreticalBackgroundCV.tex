@@ -2,7 +2,7 @@
 
 % In your case, it could for instance contain the math of camera models, the theory of feature point detection and matching, motion field models, in your case in particular the model of a moving plane, parameterization of motion in terms of rotation matrices and translation vectors, and how they are computed from a set of feature point correspondences 
 
-\section{Coordinate Frames}
+\section{Coordinate Frames}\label{sec:coord_frames}
 We are working with camera images, which are 2-D representations of points in a 3-D world. We also have different points of reference: in the real world, according to the camera etc. It is thus of utmost importance to define the coordinate frames we will be using to avoid confusion.\bigskip
 
 First of all, there is the image itself, the \newterm{image coordinate frame ICF}. This is a 2-D frame with x-axis and y-axis along the horizontal axis and vertical axis of the image respectively. The unit of these coordinates is measured in pixels and the center of the frame is at the top left of the image. The image frame is shown in \autoref{fig:im_frame}\bigskip

@@ -172,4 +172,44 @@ We now have a good set of keypoint matches on the road surface. Using these, we 
 Using another method like RANSAC will make the estimation more robust to these outliers. RANSAC takes a random sample of the provided keypoints, calculates the homography based on this subset, then checks al keypoints for this homography and repeats this process to find the subset which works for the most keypoints. This subset is then called the consensus, all keypoints that are not a part of the consensus are considered outliers and will thus not be used to estimate the homography. 
 
 \subsubsection{Decomposing the homography}
-We now have a homography, using the OpenCV method \textit{decomposeHomograpyMat}, we get a list of possible rotation matrices, translation and normal vectors. To decompose the homography, we need to provide the intrinsic parameters of the camera we used, see \autoref{sec:cammodel}.
+We now have a homography, using the OpenCV method \textit{decomposeHomograpyMat}, we get a list of possible rotation matrices, translation and normal vectors. To decompose the homography, we need to provide the intrinsic parameters of the camera we used, see \autoref{sec:cammodel}.\bigskip
+
+This method returns a list of possible rotation matrices, translation vectors and normal vectors. When comparing these, we can see that there are two different rotation matrices $\MR_1$ and $\MR_2$. Each of these two are combined with one of the two possible translation vectors $\vt_1$ and $\vt_2$ and two possible normal vectors $\vn_1$ and $\vn_2$ and their negatives. This gives us these 4 possible combinations of motion parameters:
+\begin{equation*}
+    \MR_1, \vt_1, \vn_1
+\end{equation*}
+\begin{equation*}
+    \MR_1, -\vt_1, -\vn_1
+\end{equation*}
+\begin{equation*}
+    \MR_2, \vt_2, \vn_2
+\end{equation*}
+\begin{equation*}
+    \MR_2, -\vt_2, -\vn_2
+\end{equation*}
+
+\subsection{Choosing the right motion parameters}
+Of course, only one of these combinations can be the actual motion parameters of our vehicle. By thinking practically about our case, we can already eliminate two possibilities. The vehicle we're using is a racing car, we can safely assume that the car will only move forward. Unless a mistake is made, a racing car never has to reverse on circuit thus the movement will always be forward (if there is movement).\bigskip
+
+Recall from \autoref{sec:coord_frames} that the CCF is oriented with the z-axis pointing forward in the direction of the view (and thus alongside the z-axis of the VCF). Thus, when the car moves forward, the translation vector must be positive along the z-axis: $\vt_{i,3} > 0$. Let us assume $\vt_1$ and $\vt_2$ are positive in along the z-axis, then we have two options left:
+\begin{equation*}
+    \MR_1, \vt_1, \vn_1
+\end{equation*}
+\begin{equation*}
+    \MR_2, \vt_2, \vn_2
+\end{equation*}
+
+Malis \& Vargas \cite{homography-decomposition} stated that for all the reference points being visible, they must be in front of the camera. Using this constraint they could reduce the possible solutions from our initial 4 to 2. They use the set of reference image points and the inverse of the intrinsic parameters camera matrix to calculate the projective coordinates of the reference points. As we have the set of keypoints already, we don't have to do this.\bigskip
+
+For each of these points, the projection on the direction of the possible normal vectors is computed. If this is positive for all points, we have a valid solution. When doing this using the keypoints of the new frame $k_j = (k_{j, 1}, k_{j, 2}, 1)^T$, we get the following constraint:
+\begin{equation}
+    k_j^T\vn_i > 0
+\end{equation}
+It is also possible to check this with the keypoints of the old frame $k^{'}_j = (k^{'}_{j, 1}, k^{'}_{j, 2}, 1)^T$, the constraint then looks like this:
+\begin{equation}
+    k^{'T}_j (R_{i}n_i) > 0
+\end{equation}
+
+Malis \& Vargas point out that having two different normal vectors and their opposite, in most cases this will  eliminate two possibilities (out of the original four). In rare cases, it will eliminate even a third but we cannot rely on this as in most cases it will not.\bigksip
+
+However, when considering the two possibilities we could eliminate by looking at the direction of the translation vector and comparing this to the the two possibilities we could eliminate by looking at the normal vector, I found that these are the same possibilities as the sign of the translation- and normal vector change together. We are thus still left with two possible combinations of motion parameters. 
