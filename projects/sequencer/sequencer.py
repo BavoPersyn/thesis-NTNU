@@ -742,6 +742,26 @@ class Sequencer:
         vcf = np.matmul(r_ccf_to_vcf, vcf)
         return vcf
 
+    def vcf_to_wcf(self, vector):
+        # invert transformation of car so far
+        t = self.invert_transform_matrix(self.transformation)
+        vector = np.append(np.array(vector), [1])
+        wcf = np.matmul(t, vector)
+        # rotate 180° around z-axis
+        r = make_rotation_matrix(0, 0, 180, radians=False)
+        wcf = np.matmul(r, wcf)
+        return wcf
+
+    def wcf_to_vcf(self, vector):
+        # rotate 180° around z-axis
+        r = make_rotation_matrix(0, 0, 180, radians=False)
+        vcf = np.matmul(r, vector)
+        # apply transformation of car so far
+        vcf = np.append(vcf, [1])
+        vcf = np.matmul(self.transformation, vcf)
+        return vcf
+
+
     def invert_transform_matrix(self, t_mat):
         rotation = np.zeros((4, 4))
         translation = np.zeros((4, 4))
