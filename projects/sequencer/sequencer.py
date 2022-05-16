@@ -55,7 +55,7 @@ def form_transformation_matrix(r, t):
 
 
 def rad_to_deg(angle):
-    return  angle/(2 * math.pi) * 360
+    return angle/(2 * math.pi) * 360
 
 
 def deg_to_rad(angle):
