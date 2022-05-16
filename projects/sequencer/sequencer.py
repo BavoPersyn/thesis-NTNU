@@ -761,6 +761,15 @@ class Sequencer:
         vcf = np.matmul(self.transformation, vcf)
         return vcf
 
+    def wcf_to_ccf(self, vector):
+        vcf = self.wcf_to_vcf(vector)
+        ccf = self.vcf_to_ccf(vcf)
+        return ccf
+
+    def ccf_to_wcf(self, vector):
+        vcf = self.ccf_to_vcf(vector)
+        wcf = self.vcf_to_wcf(vcf)
+        return wcf
 
     def invert_transform_matrix(self, t_mat):
         rotation = np.zeros((4, 4))
