@@ -640,8 +640,8 @@ class Sequencer:
         self.a = self.horizon - self.y2
         self.b = self.width
         self.c = 0
-        self.K[0][0] = self.height / (2 * tan(self.FOV_V / 2))
-        self.K[1][1] = self.width / (2 * tan(self.FOV_H / 2))
+        self.K[0][0] = self.height / (2 * tan(deg_to_rad(self.FOV_V / 2)))
+        self.K[1][1] = self.width / (2 * tan(deg_to_rad(self.FOV_H / 2)))
         self.K[0][2] = self.principal_point[0]
         self.K[1][2] = self.principal_point[1]
         self.K[2][2] = 1
