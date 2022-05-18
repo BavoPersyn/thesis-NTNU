@@ -139,6 +139,19 @@ def invert_transform_matrix(t_mat):
     return new_t
 
 
+def birds_eye_view(image, intrinsic, theta, phi, height=500):
+    rotation = make_rotation_matrix(theta, 0, phi, radians=False)
+    # adjust for height of camera
+    for i in range(3):
+        rotation[i][2] = rotation[i][2] * height
+
+    homography = np.matmul(intrinsic, rotation)
+    bev = cv2.warpPerspective(image, homography, (image.shape[1], image.shape[0]))
+    cv2.imshow('birds eye view', bev)
+    cv2.waitKey(0)
+    cv2.destroyWindow('birds eye view')
+
+
 class Sequencer:
     SEQ_NUM = 1
     BUF_SIZ = 2
@@ -527,8 +540,7 @@ class Sequencer:
         # cv2.destroyWindow("rotated")
         # temp = self.vcf_to_ccf([10, 15, 0])
         # print(self.ccf_to_vcf(temp))
-        test_mat = [[1, 2, 3, 10], [4, 5, 6, 11], [7, 8, 9, 12], [0, 0, 0, 1]]
-        invert_transform_matrix(test_mat)
+        birds_eye_view(self.buffer, self.K, self.CAMERA_ANGLE_X, self.CAMERA_ANGLE_Z)
 
     def select_keypoints(self, index, title, point_type=-1):
         if point_type == -1:
