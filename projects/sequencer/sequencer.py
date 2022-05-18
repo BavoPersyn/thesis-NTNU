@@ -103,6 +103,42 @@ def rot_mat(theta, psi, phi, radians=True):
     return matrix
 
 
+def check_possibility(rotation, translation, normal, points):
+    # If translation goes negative along z-axis: car is going backwards so not possible
+    if translation[2] < 0:
+        return False
+    n = np.transpose(normal)
+    r = np.transpose(rotation)
+    nr = np.matmul(n, r)
+    nrt = np.matmul(nr, translation)
+    test_value = 1 + nrt
+    # 1 + n^TR^Tt should be bigger then 0
+    if test_value < 0:
+        return False
+    for point in points:
+        m = [point[0], point[1], 1]
+        test_value = np.matmul(np.transpose(m), normal)
+        if test_value < 0:
+            return False
+    return True
+
+
+def invert_transform_matrix(t_mat):
+    rotation = np.zeros((4, 4))
+    translation = np.zeros((4, 4))
+    # Transpose rotation part of T
+    rotation[3][3] = 1
+    for i in range(3):
+        for j in range(3):
+            rotation[i][j] = t_mat[j][i]
+    # Make translation part negative
+    for i in range(4):
+        translation[i][3] = -t_mat[i][3]
+        translation[i][i] = 1
+    new_t = np.matmul(rotation, translation)
+    return new_t
+
+
 class Sequencer:
     SEQ_NUM = 1
     BUF_SIZ = 2
@@ -394,7 +430,7 @@ class Sequencer:
                     continue
                 retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
                 for i in range(retval):
-                    if self.check_possibility(rotations[i], translations[i], normals[i], points):
+                    if check_possibility(rotations[i], translations[i], normals[i], points):
                         print(rotations[i], '\n', translations[i], '\n', normals[i], '\n',
                               np.linalg.norm(translations[i]))
             elif key == ord('r'):
@@ -406,25 +442,6 @@ class Sequencer:
                 continue
         cv2.destroyAllWindows()
         return
-
-    def check_possibility(self, rotation, translation, normal, points):
-        # If translation goes negative along z-axis: car is going backwards so not possible
-        if translation[2] < 0:
-            return False
-        n = np.transpose(normal)
-        r = np.transpose(rotation)
-        nr = np.matmul(n, r)
-        nrt = np.matmul(nr, translation)
-        test_value = 1 + nrt
-        # 1 + n^TR^Tt should be bigger then 0
-        if test_value < 0:
-            return False
-        for point in points:
-            m = [point[0], point[1], 1]
-            test_value = np.matmul(np.transpose(m), normal)
-            if test_value < 0:
-                return False
-        return True
 
     def to_birds_eye_view(self, image, h):
         out = cv2.warpPerspective(image, h, (self.width, self.height))
@@ -511,7 +528,7 @@ class Sequencer:
         # temp = self.vcf_to_ccf([10, 15, 0])
         # print(self.ccf_to_vcf(temp))
         test_mat = [[1, 2, 3, 10], [4, 5, 6, 11], [7, 8, 9, 12], [0, 0, 0, 1]]
-        self.invert_transform_matrix(test_mat)
+        invert_transform_matrix(test_mat)
 
     def select_keypoints(self, index, title, point_type=-1):
         if point_type == -1:
@@ -744,7 +761,7 @@ class Sequencer:
 
     def vcf_to_wcf(self, vector):
         # invert transformation of car so far
-        t = self.invert_transform_matrix(self.transformation)
+        t = invert_transform_matrix(self.transformation)
         vector = np.append(np.array(vector), [1])
         wcf = np.matmul(t, vector)
         # rotate 180° around z-axis
@@ -770,18 +787,3 @@ class Sequencer:
         vcf = self.ccf_to_vcf(vector)
         wcf = self.vcf_to_wcf(vcf)
         return wcf
-
-    def invert_transform_matrix(self, t_mat):
-        rotation = np.zeros((4, 4))
-        translation = np.zeros((4, 4))
-        # Transpose rotation part of T
-        rotation[3][3] = 1
-        for i in range(3):
-            for j in range(3):
-                rotation[i][j] = t_mat[j][i]
-        # Make translation part negative
-        for i in range(4):
-            translation[i][3] = -t_mat[i][3]
-            translation[i][i] = 1
-        new_t = np.matmul(rotation, translation)
-        return new_t
