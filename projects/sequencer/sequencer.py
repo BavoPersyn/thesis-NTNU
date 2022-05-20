@@ -140,17 +140,34 @@ def invert_transform_matrix(t_mat):
     return new_t
 
 
-def birds_eye_view(image, intrinsic, theta, phi, height=500):
-    rotation = make_rotation_matrix(theta, 0, phi, radians=False)
+def birds_eye_view(image, intrinsic, theta, phi, height=2000):
+    rotation = make_rotation_matrix(90, 0, 0, radians=False)
     # adjust for height of camera
     for i in range(3):
         rotation[i][2] = rotation[i][2] * height
-
     homography = np.matmul(intrinsic, rotation)
     bev = cv2.warpPerspective(image, homography, (image.shape[1], image.shape[0]))
     cv2.imshow('birds eye view', bev)
-    cv2.waitKey(0)
+    key = cv2.waitKey(0)
     cv2.destroyWindow('birds eye view')
+    if key == ord('q'):
+        return False
+    return True
+
+
+def rotation_matrix_from_vectors(vec1, vec2):
+    """ Find the rotation matrix that aligns vec1 to vec2
+    :param vec1: A 3d "source" vector
+    :param vec2: A 3d "destination" vector
+    :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
+    """
+    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+    v = np.cross(a, b)
+    c = np.dot(a, b)
+    s = np.linalg.norm(v)
+    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+    return rotation_matrix
 
 
 class Sequencer:
@@ -436,7 +453,17 @@ class Sequencer:
 
                 cv2.imshow(title, image)
             elif key == ord('u'):
-                self.test()
+                # self.test(index, title)
+                height = 1
+                angle = 1
+                cont = True
+                while cont:
+                    cont, k = self.test(index, title, height, angle)
+                    if k == ord('a'):
+                        angle *= 2
+                    else:
+                        height *= 2
+                print(height/2)
             elif key == ord('v'):
                 exists, H, points = self.find_homography(index, title)
                 if not exists:
@@ -541,7 +568,7 @@ class Sequencer:
             good_matches = np.loadtxt(filename, dtype='int32', delimiter=',')
         return good_matches
 
-    def test(self):
+    def test(self, index, title, height, angle):
         # k = ''
         # while k != ord('q'):
         #     angle = input("Give angle: ")
@@ -552,7 +579,53 @@ class Sequencer:
         # cv2.destroyWindow("rotated")
         # temp = self.vcf_to_ccf([10, 15, 0])
         # print(self.ccf_to_vcf(temp))
-        birds_eye_view(self.buffer, self.K, self.CAMERA_ANGLE_X, self.CAMERA_ANGLE_Z)
+        # birds_eye_view(self.buffer, self.K, self.CAMERA_ANGLE_X, self.CAMERA_ANGLE_Z)
+        exists, H, points = self.find_homography(index, title)
+        if not exists:
+            print("No homography found")
+            return
+        motion = self.decompose_homography(H, points)
+        if motion is None:
+            print("No good motion parameters")
+            return False, None
+        bev = self.create_birds_eye_view(index, title, motion[2], motion[1], height, angle)
+        cv2.imshow("birds eye view", bev)
+        k = cv2.waitKey(0)
+        cv2.destroyWindow('birds eye view')
+        if k == ord('q'):
+            return False, None
+        return True, k
+
+    def create_birds_eye_view(self, index, title, normal, translation, height=2000, angle=1):
+        # rotation = make_rotation_matrix(self.CAMERA_ANGLE_X, 0, self.CAMERA_ANGLE_Z, radians=False)
+        # translation = np.zeros((3, 3))
+        # translation[0][0] = 1
+        # translation[1][1] = 1
+        # translation[2][2] = 2000
+        # rotation = np.matmul(rotation, translation)
+        # h1 = np.matmul(self.K, rotation)
+        # h1_inv = np.linalg.inv(h1)
+        # works, h2, points = self.find_homography(index, title)
+        # h12 = np.matmul(h2, h1_inv)
+        # bev = cv2.warpPerspective(self.buffer, h12, (self.buffer.shape[1], self.buffer.shape[0]))
+        rotation = rotation_matrix_from_vectors(np.array([0, 1, 0]), -normal)
+        translation = np.zeros((3, 3))
+        translation[0][0] = 1
+        translation[1][1] = 1
+        translation[2][2] = angle
+        rotation = np.matmul(rotation, translation)
+        k_inv = np.linalg.inv(self.K)
+        # rot = make_rotation_matrix(self.CAMERA_ANGLE_X, 0, self.CAMERA_ANGLE_Z, radians=False)
+        # rot = np.linalg.inv(rot)
+        # h1 = np.matmul(k_inv, rot)
+        h1 = k_inv
+        h2 = np.matmul(self.K, rotation)
+        h12 = np.matmul(h2, h1)
+        nt = np.matmul(np.array([[500], [height], [500]]), normal.T)
+        H = np.add(rotation, nt)
+        bev = cv2.warpPerspective(self.buffer, H, (self.buffer.shape[1], self.buffer.shape[0]))
+
+        return bev
 
     def select_keypoints(self, index, title, point_type=-1):
         if point_type == -1:
