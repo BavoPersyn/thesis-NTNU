@@ -35,3 +35,69 @@ A homography relates the transformation between two planes up to a scaling facto
 \section{Frame-to-frame 2D motion analysis}
 We can now step through the footage efficiently. To estimate the frame-to-frame motion of the car, the rotation matrix $\MR$, translation vector $\vt$ and normal vector $\vn$ must be calculated. These can be calculated using keypoints in the frames. 
 
+
+---------------------
+We know the initial orientation of the camera with respect to the ground plane. Recall from \autoref{eq:improj} that every point projected onto the image plane follows the projection that is described by the intrinsic parameters of the camera, these parameters form the matrix $\MK$.\bigskip
+
+This was under the assumption that the coordinate frames of the camera lined up with the world coordinate frame. However, this is not the case. The camera is mounted tilted so to have the proper projection we need to add a rotation. In the initial set-up, the camera is pointing forward, there is no rotation left or right so $\psi$ equals 0. Our camera is tilted so there is a rotation $\psi$ around the z-axis. There camera might also be pointing down a little so there might be a rotation $\theta$ around the x-axis. This gives the following rotation matrix:
+\begin{equation}
+    \MR = \MR_z(\phi)\MR_y(0)\MR_x(\theta) = \MR_z(\phi)\MR_x(\theta)
+\end{equation}
+The camera is not located at the center of the world coordinate frame so there is also a translation $\vt = (\vt_1, \vt_2, \vt_3)^T$\bigskip
+
+Thus, the relation between the points in the real world and the points on the image frame can be described as follows:
+\begin{equation}\label{eq:image_projection}
+    \begin{pmatrix}
+        x \\ y \\ 1
+    \end{pmatrix} = (\MK\mid\vnull)\begin{pmatrix}
+        \MR & \vt \\ \vnull & 1
+    \end{pmatrix}\begin{pmatrix}
+        X \\ Y \\ Z \\ 1
+    \end{pmatrix}
+\end{equation}
+The projection matrix $\MP$ is thus:
+\begin{equation}
+    \MP = (\MK\mid\vnull)\begin{pmatrix}
+        \MR & \vt \\ \vnull & 1
+    \end{pmatrix}
+\end{equation}
+To create the bird's eye view, we're only considering the points on the ground plane. The homogeneous world coordinates of these points will always be of the form $P = (P_1, 0, P_2, 1)$. This means that \autoref{eq:image_projection} can be simplified:
+\begin{equation}
+    \begin{pmatrix}
+        x \\ y \\ 1
+    \end{pmatrix} = \begin{pmatrix}
+        p_{11} & p_{12} & p_{13} & p_{14} \\
+        p_{21} & p_{22} & p_{23} & p_{24} \\
+        p_{31} & p_{32} & p_{33} & p_{34} \\
+    \end{pmatrix}\begin{pmatrix}
+        X \\ 0 \\ Z \\ 1
+    \end{pmatrix}
+\end{equation}
+\begin{equation*}
+    = \begin{pmatrix}
+        p_{11} & p_{13} & p_{14} \\
+        p_{21} & p_{23} & p_{24} \\
+        p_{31} & p_{33} & p_{34} \\
+    \end{pmatrix}\begin{pmatrix}
+        X \\ Z \\ 1
+    \end{pmatrix}
+\end{equation*}
+\begin{equation*}
+    = \MH_0\begin{pmatrix}
+        X \\ Z \\ 1
+    \end{pmatrix}
+\end{equation*}
+This homography $\MH$ describes the relation between real world points on the ground plane and the image plane in its original pose. $\MH$ can be rewritten as:
+\begin{equation}
+    \MH_0 = \MK\MR_z(\phi)\MR_x(\theta)\begin{pmatrix}
+        1 & 0 & 0 \\
+        0 & 1 & 0 \\
+        0 & 0 & h \\
+    \end{pmatrix}
+\end{equation}
+where $h$ is the height of the camera.\bigskip
+
+The second thing we know is the relation between two consecutive image planes. This is the homography we estimated in the previous steps we took. Let us call this homography $H_1$. So to go from the image plane to bird's eye view, we need to undo $H_0$ and thus go back to the ground plane. 
+
+---------------------
+Now that we know the rotation of the image plane to the bird's eye view plane, we can make our bird's eye view. Points on the ground plane have been projected onto the image plane using the camera matrix $\MK$ like this: $(x, y, 1)^T = (\MK\mid\vnull)(X, Y, Z, 1)^T$. Thus the homography between the points on the ground plane and the image plane can be simply expressed as: $\MH_1 = \MK$. The homography from the 

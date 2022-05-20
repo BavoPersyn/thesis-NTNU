@@ -210,6 +210,45 @@ It is also possible to check this with the keypoints of the old frame $k^{'}_j =
     k^{'T}_j (R_{i}n_i) > 0
 \end{equation}
 
-Malis \& Vargas point out that having two different normal vectors and their opposite, in most cases this will  eliminate two possibilities (out of the original four). In rare cases, it will eliminate even a third but we cannot rely on this as in most cases it will not.\bigksip
+Malis \& Vargas point out that having two different normal vectors and their opposite, in most cases this will  eliminate two possibilities (out of the original four). In rare cases, it will eliminate even a third but we cannot rely on this as in most cases it will not. \bigskip
 
 However, when considering the two possibilities we could eliminate by looking at the direction of the translation vector and comparing this to the the two possibilities we could eliminate by looking at the normal vector, I found that these are the same possibilities as the sign of the translation- and normal vector change together. We are thus still left with two possible combinations of motion parameters. 
+
+\section{Generating Bird's Eye View}
+A bird's eye view of the road surface can give us a good idea of how the road surface looks like, e.g. the way the road turns. Based on the footage we have and the homography between the camera views it is possible to generate a bird's eye view of the road surface. Of course, this is just an estimate as there is no way to generate an image of things that are not visible to the camera.\bigskip
+
+Let us start with what we already have and know. In the previous step, we calculated the homography between two consecutive images of the ground plane and decomposed this into the rotation and translation between the two, as well as the plane normal vector for the first image $\vn_p$. \autoref{fig:ground_plane} shows the ground plane with its plane normal vector $\vn_p$ according to the first image. Each of the images has its own image plane normal vector $\vn_i$.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/birds_eye_view.jpg}
+    \caption{}
+    \label{fig:ground_plane}
+\end{figure}
+
+\autoref{fig:birds_eye_view} shows the desired view from image 1. The bird's eye view we want is the image plane of image 1 transformed so it is parallel to the ground plane. This means the normal vector of image 1 must be anti-parallel to the plane normal vector. We know both the normal vector of the ground plane $\vn_p$ and the normal of the image plane $\vn_1$. As we defined that the z-axis is perpendicular to the image plane we know $\vn_1 = (0, 1, 0)^T$.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/birds_eye_view_2.jpg}
+    \caption{}
+    \label{fig:birds_eye_view}
+\end{figure}
+
+So to find the transformation to go from image 1 to a bird's eye view, we must find the rotation that maps $\vn_1$ to $-\vn_p$, we call this vector $\vn_1'$. The rotation between the two vectors can be found as follows:
+\begin{equation}\label{eq:bev_rotation}
+    \MR = \MI + [v]_\times + [v]_\times^2\frac{1-c}{s^2}
+\end{equation}
+With
+\begin{flalign*}
+    &c = \vn_1\cdot\vn_p\\
+    &v = \vn_1\times\vn_p\\
+    &s = \mid\mid v\mid\mid \\
+    &[v]_\times = \begin{pmatrix} 
+    0 & -v_3 & v_2 \\
+    v_3 & 0 & -v_1 \\
+    -v_2 & v_1 & 0
+    \end{pmatrix}
+\end{flalign*}
+
+Recall from \autoref{eq:homography} how a homography is defined. The homography between the original image and the bird's eye view is thus $\MH = \MR + \vt\vn^T$ with $\MR$ being the rotation matrix calculated in \autoref{eq:bev_rotation}, $\vn$ the plane normal vector and $\vt$ the translation to move the image plane above the ground plane.
