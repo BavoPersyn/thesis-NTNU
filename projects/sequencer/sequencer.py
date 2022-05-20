@@ -106,7 +106,7 @@ def rot_mat(theta, psi, phi, radians=True):
 def check_possibility(rotation, translation, normal, points):
     # If translation goes negative along z-axis: car is going backwards so not possible
     if translation[2] < 0:
-        return False
+        return False, 0
     n = np.transpose(normal)
     r = np.transpose(rotation)
     nr = np.matmul(n, r)
@@ -114,13 +114,14 @@ def check_possibility(rotation, translation, normal, points):
     test_value = 1 + nrt
     # 1 + n^TR^Tt should be bigger then 0
     if test_value < 0:
-        return False
+        return False, 0
+    good_points = 0
     for point in points:
         m = [point[0], point[1], 1]
         test_value = np.matmul(np.transpose(m), normal)
-        if test_value < 0:
-            return False
-    return True
+        if test_value > 0:
+            good_points += 1
+    return True, good_points
 
 
 def invert_transform_matrix(t_mat):
@@ -406,7 +407,7 @@ class Sequencer:
                 key = None
                 while not key == ord('h') and not eof:
                     eof = self.add_next_image(sequence, index)
-                    exists, H = self.find_homography(index, title)
+                    exists, H, points = self.find_homography(index, title)
                     if not exists:
                         break
                     out = self.show_image(None, self.imageFifo[0])
@@ -441,11 +442,11 @@ class Sequencer:
                 if not exists:
                     print("No homography found")
                     continue
-                retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-                for i in range(retval):
-                    if check_possibility(rotations[i], translations[i], normals[i], points):
-                        print(rotations[i], '\n', translations[i], '\n', normals[i], '\n',
-                              np.linalg.norm(translations[i]))
+                motion = self.decompose_homography(H, points)
+                if motion is None:
+                    print("No good motion parameters")
+                else:
+                    print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
             elif key == ord('r'):
                 print(make_rotation_matrix(math.pi / 2, math.pi / 2, math.pi / 2))
                 print(rot_mat(90, 90, 90, False))
@@ -455,6 +456,17 @@ class Sequencer:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def decompose_homography(self, homography, points):
+        retval, rotations, translations, normals = cv2.decomposeHomographyMat(homography, self.K)
+        motion = None
+        best = 0
+        for i in range(retval):
+            possible, goodpoints = check_possibility(rotations[i], translations[i], normals[i], points)
+            if possible and goodpoints > best:
+                motion = (rotations[i], translations[i], normals[i])
+                best = goodpoints
+        return motion
 
     def to_birds_eye_view(self, image, h):
         out = cv2.warpPerspective(image, h, (self.width, self.height))
