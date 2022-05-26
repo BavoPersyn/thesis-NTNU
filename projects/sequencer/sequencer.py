@@ -9,7 +9,7 @@ import numpy as np
 import random as rand
 from math import tan
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from copy import copy
 
 
 def rotate_image(image, angle):
@@ -679,8 +679,8 @@ class Sequencer:
 
     def create_patch(self, image, point):
         cross_color = (255, 255, 255)
-        patch = image[point[1] - self.WINDOW // 2:point[1] + self.WINDOW // 2,
-                point[0] - self.WINDOW // 2: point[0] + self.WINDOW // 2]
+        patch = copy(image[point[1] - self.WINDOW // 2:point[1] + self.WINDOW // 2,
+                point[0] - self.WINDOW // 2: point[0] + self.WINDOW // 2])
         black = np.average(patch) < 128
         if not black:
             cross_color = (0, 0, 0)
