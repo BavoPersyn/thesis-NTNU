@@ -474,9 +474,9 @@ class Sequencer:
                     print("No good motion parameters")
                 else:
                     print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
-            elif key == ord('r'):
-                print(make_rotation_matrix(math.pi / 2, math.pi / 2, math.pi / 2))
-                print(rot_mat(90, 90, 90, False))
+                # tr = cv2.warpPerspective(self.imageFifo[0], H,(self.imageFifo[0].shape[1], self.imageFifo[0].shape[0]))
+                # cv2.imshow("test", tr)
+
             elif key == ord('q'):
                 eof = True
             else:
