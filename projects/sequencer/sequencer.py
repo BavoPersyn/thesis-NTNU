@@ -385,30 +385,6 @@ class Sequencer:
                     cv2.imshow(title, out)
                     index += 1
                     key = cv2.waitKey(1)
-            elif key == ord('s'):
-                file = open(self.folder + "/points/IMG" + str(int(index - 2)).zfill(5) +
-                            "-" + str(int(index - 1)).zfill(5) + ".txt", "a")
-                (points1, points2) = self.detect_and_match()
-                im1 = reduce_contrast(self.imageFifo[-2])
-                im2 = reduce_contrast(self.imageFifo[-1])
-                goodpoints = []
-                for i in range(0, len(points1)):
-                    image = np.vstack((im1, im2))
-                    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-                    p1 = (int(points1[i][0]), int(points1[i][1]))
-                    p2 = (int(points2[i][0]), int(points2[i][1]) + self.height - self.horizon)
-                    cv2.circle(image, p1, radius=6, color=(255, 0, 0), thickness=3)
-                    cv2.circle(image, p2, radius=6, color=(255, 0, 0), thickness=3)
-                    cv2.imshow("test", image)
-                    k = cv2.waitKey(0)
-                    if k == ord('q'):
-                        break
-                    elif k == ord('g'):
-                        file.write(str(p1) + str(p2) + "\n")
-                    else:
-                        continue
-                file.close()
-                cv2.destroyWindow("test")
             elif key == ord('t'):
                 good_matches = self.select_keypoints(index, title)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
