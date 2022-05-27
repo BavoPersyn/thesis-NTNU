@@ -311,7 +311,7 @@ class Sequencer:
         self.fill_fifo(sequence, 1, self.BUF_SIZ + 1)
 
         title = 'Sequence' + str(sequence).zfill(3)
-        points, descriptors = self.dispose(self.pointsFifo[0])
+        points, descriptors = self.dispose(self.pointsFifo[0], 0)
         out = self.show_image((points, points), self.imageFifo[0])
         cv2.imshow(title, out)
         cv2.setWindowTitle(title, title + ' Frame 1')
@@ -325,7 +325,7 @@ class Sequencer:
                     continue
                 # points = self.detect_and_match()
                 self.detect(self.imageFifo[0], 0)
-                points, descriptors = self.dispose(self.pointsFifo[0])
+                points, descriptors = self.dispose(self.pointsFifo[0], 0)
                 out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
                 index += 1
@@ -339,7 +339,7 @@ class Sequencer:
                     + '.jpg')
                 self.imageFifo.appendleft(self.process_image(self.buffer))
                 # points = self.detect_and_match()
-                points, descriptors = self.dispose(self.pointsFifo[0])
+                points, descriptors = self.dispose(self.pointsFifo[0], 0)
                 out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
                 index -= 1
@@ -356,7 +356,7 @@ class Sequencer:
                 index += jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                points, descriptors = self.dispose(self.pointsFifo[0])
+                points, descriptors = self.dispose(self.pointsFifo[0], 0)
                 out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
             elif key == ord('b'):
@@ -371,7 +371,7 @@ class Sequencer:
                 index -= jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                points, descriptors = self.dispose(self.pointsFifo[0])
+                points, descriptors = self.dispose(self.pointsFifo[0], 0)
                 out = self.show_image((points, points), self.imageFifo[0])
                 cv2.imshow(title, out)
             elif key == ord(' '):
@@ -380,12 +380,13 @@ class Sequencer:
                 while not key == ord(' ') and not eof:
                     eof = self.add_next_image(sequence, index)
                     self.detect(self.imageFifo[0])
-                    points, descriptors = self.dispose(self.pointsFifo[0])
+                    points, descriptors = self.dispose(self.pointsFifo[0], 0)
                     out = self.show_image((points, points), self.imageFifo[0])
                     cv2.imshow(title, out)
                     index += 1
                     key = cv2.waitKey(1)
             elif key == ord('t'):
+                # Manually select keypoints
                 good_matches = self.select_keypoints(index, title)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
                 image = reduce_contrast(image)
@@ -429,7 +430,7 @@ class Sequencer:
 
                 cv2.imshow(title, image)
             elif key == ord('u'):
-                # self.test(index, title)
+                # Test birds eye view
                 height = 1
                 angle = 1
                 cont = True
@@ -450,7 +451,7 @@ class Sequencer:
                     print("No good motion parameters")
                 else:
                     print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
-                # tr = cv2.warpPerspective(self.imageFifo[0], H,(self.imageFifo[0].shape[1], self.imageFifo[0].shape[0]))
+                # tr = cv2.warpPerspective(self.imageFifo[0], H, (self.imageFifo[0].shape[1], self.imageFifo[0].shape[0]))
                 # cv2.imshow("test", tr)
 
             elif key == ord('q'):
@@ -615,7 +616,7 @@ class Sequencer:
         else:
             filename = self.folder + '/points/essential/IMG' + str(int(index - 2)).zfill(5) + '-' \
                        + str(int(index - 1)).zfill(5) + '.txt '
-        kp1, des1 = self.dispose(self.pointsFifo[0])
+        kp1, des1 = self.dispose(self.pointsFifo[0], point_type)
         kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
         des1 = des1.astype('uint8')
         matches = self.matcher.match(des1, des2)
@@ -633,7 +634,8 @@ class Sequencer:
             image = cv2.circle(image, point1, radius=6, color=color, thickness=3)
             image = cv2.circle(image, point2, radius=6, color=color, thickness=3)
             image = cv2.line(image, point1, point2, color=color, thickness=2)
-            cv2.imshow(title, cv2.resize(image, (int(self.width / 1.25), int((self.height - self.horizon) / 1.25))))
+            # image = cv2.resize(image, (int(self.width / 1.25), int((self.height - self.horizon) / 1.25)))
+            cv2.imshow(title, image)
             # cv2.waitKey()
             cross_color1 = (255, 255, 255)
             cross_color2 = (255, 255, 255)
@@ -665,7 +667,11 @@ class Sequencer:
 
         return patch
 
-    def dispose(self, kp_des):
+    def dispose(self, kp_des, point_type):
+        if point_type == 1:
+            check_horizon = False
+        else:
+            check_horizon = True
         kps = np.array([])
         descs = np.array([])
         points = kp_des[0]
@@ -681,7 +687,7 @@ class Sequencer:
             point = points[i].pt
             x, y = int(point[0] / b), int(point[1] / h)
             in_mask = (self.ego_car[int(point[1])][int(point[0])] == [0., 0., 0.]).all()
-            above = (self.a * int(point[0]) + self.b * int(point[1]) + self.c) < 0
+            above = check_horizon and (self.a * int(point[0]) + self.b * int(point[1]) + self.c) < 0
             if in_mask or above:
                 continue
             if all(v == 0 for v in cells[y][x]):
