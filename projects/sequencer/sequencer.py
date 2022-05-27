@@ -170,6 +170,22 @@ def rotation_matrix_from_vectors(vec1, vec2):
     return rotation_matrix
 
 
+def get_horizon_point(p1, p2, x):
+    a = p1[1] - p2[1]
+    b = p2[0] - p1[0]
+    c = p1[0] * p2[1] - p2[0] * p1[1]
+    y = -(a * x + c)/b
+    return np.array([int(x), int(y)])
+
+
+def point_in_distance(normal, x, z, d):
+    a, b, c = normal
+    if b == 0:
+        return None
+    y = -(a * x + c * z + d)/b
+    return np.array([x, y[0], z, 1])
+
+
 class Sequencer:
     SEQ_NUM = 1
     BUF_SIZ = 2
@@ -181,7 +197,8 @@ class Sequencer:
     CAMERA_ANGLE_X = 0
     CAMERA_ANGLE_Y = 0
     CAMERA_ANGLE_Z = -15
-    T_VCF_CCF = np.array([-0.5, 1, 0])
+    T_VCF_CCF = np.array([-0.5, 100, 0])
+    RADIUS = 10000
 
     def __init__(self):
         self.y2 = 0
@@ -201,6 +218,7 @@ class Sequencer:
         self.b = 0
         self.c = 0
         self.K = np.zeros((3, 3))
+        self.K_extra = np.zeros((3, 4))
         self.position = np.array([0, 0, 0])
         self.transformation = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         self.positions = np.array([self.position])
@@ -453,7 +471,7 @@ class Sequencer:
                     print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
                 # tr = cv2.warpPerspective(self.imageFifo[0], H, (self.imageFifo[0].shape[1], self.imageFifo[0].shape[0]))
                 # cv2.imshow("test", tr)
-
+                self.estimate_horizon(motion[2])
             elif key == ord('q'):
                 eof = True
             else:
@@ -724,6 +742,10 @@ class Sequencer:
         self.K[0][2] = self.principal_point[0]
         self.K[1][2] = self.principal_point[1]
         self.K[2][2] = 1
+        unity = np.zeros((3, 4))
+        for i in range(3):
+            unity[i][i] = 1
+        self.K_extra = np.matmul(self.K, unity)
 
     def detect(self, image, pos=0):
         kp, des = self.orb.detectAndCompute(image, self.mask)
@@ -866,3 +888,30 @@ class Sequencer:
         vcf = self.ccf_to_vcf(vector)
         wcf = self.vcf_to_wcf(vcf)
         return wcf
+
+    def estimate_horizon(self, normal):
+        p = self.find_point_under_camera(normal)
+        d = self.T_VCF_CCF[1]
+        point1 = point_in_distance(normal, 70, 100000, d)
+        point2 = point_in_distance(normal, 60, 100000, d)
+        p1 = np.matmul(self.K_extra, point1)
+        p2 = np.matmul(self.K_extra, point2)
+        p1 /= p1[2]
+        p2 /= p2[2]
+        p1[1] = p1[1] - self.horizon
+        p2[1] = p2[1] - self.horizon
+        start = get_horizon_point(p1, p2, 0)
+        end = get_horizon_point(p1, p2, self.width)
+        print(start, end)
+        image = cv2.cvtColor(self.imageFifo[1], cv2.COLOR_GRAY2BGR)
+        image = cv2.line(image, start, end, color=(255, 0, 0), thickness=2)
+        cv2.imshow('horizon', image)
+        cv2.waitKey(0)
+        cv2.destroyWindow('horizon')
+
+        return
+
+    def find_point_under_camera(self, normal):
+        d = self.T_VCF_CCF[1]
+        return d * normal
+
