@@ -471,7 +471,10 @@ class Sequencer:
                     print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
                 # tr = cv2.warpPerspective(self.imageFifo[0], H, (self.imageFifo[0].shape[1], self.imageFifo[0].shape[0]))
                 # cv2.imshow("test", tr)
-                self.estimate_horizon(motion[2])
+                retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
+                for i in range(retval):
+                    self.estimate_horizon(normals[i])
+                # self.estimate_horizon(motion[2])
             elif key == ord('q'):
                 eof = True
             else:
@@ -891,7 +894,7 @@ class Sequencer:
 
     def estimate_horizon(self, normal):
         p = self.find_point_under_camera(normal)
-        d = self.T_VCF_CCF[1]
+        d = -self.T_VCF_CCF[1]
         point1 = point_in_distance(normal, 70, 100000, d)
         point2 = point_in_distance(normal, 60, 100000, d)
         p1 = np.matmul(self.K_extra, point1)
@@ -902,6 +905,7 @@ class Sequencer:
         p2[1] = p2[1] - self.horizon
         start = get_horizon_point(p1, p2, 0)
         end = get_horizon_point(p1, p2, self.width)
+        print(normal)
         print(start, end)
         image = cv2.cvtColor(self.imageFifo[1], cv2.COLOR_GRAY2BGR)
         image = cv2.line(image, start, end, color=(255, 0, 0), thickness=2)
