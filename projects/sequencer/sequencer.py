@@ -236,6 +236,9 @@ class Sequencer:
         self.folder = './Videos/sequence_'
 
     def show_menu(self):
+        """
+        Console interaction menu to chose what to do
+        """
         print("What do you want to do?")
         print("1: Read video and convert to image folder")
         print("2: Read images in buffer")
@@ -253,6 +256,9 @@ class Sequencer:
             self.show_menu()
 
     def read_video(self):
+        """
+        Read video of given filename and save each frame as separate image in a folder
+        """
         file = input("Give filename: ")
         while file != "":
             if not os.path.exists('./' + file):
@@ -264,62 +270,23 @@ class Sequencer:
             file = input("Give filename: ")
         self.show_menu()
 
-    def create_mask(self, sequence):
-        ego_car = cv2.imread(self.folder + '/SEQ' + str(sequence).zfill(3) + 'BW.jpg')
-        (T, ego_car) = cv2.threshold(ego_car, 127, 255, cv2.THRESH_BINARY)
-        self.mask = cv2.cvtColor(ego_car, cv2.COLOR_BGR2GRAY)
-        self.ego_car = ego_car / 255
-        if self.color == 0:
-            self.black = [0]
-        else:
-            self.black = [0, 0, 0]
-        self.ego_car = self.ego_car[self.horizon:self.height, 0:self.width]
-        self.mask = self.mask[self.horizon:self.height, 0:self.width]
-
-    def fill_fifo(self, sequence, start, stop):
-        # fill FIFO with the next images after being processed, keep last new image in buffer
-        for i in range(start, stop):
-            # check whether end of file is reached
-            if not os.path.exists(
-                    self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(i).zfill(5) + '.jpg'):
-                return
-            self.buffer = cv2.imread(self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(i)).zfill(5)
-                                     + '.jpg')
-            self.imageFifo.appendleft(self.process_image(self.buffer))
-            self.detect(self.imageFifo[0], 0)
-
-    def add_next_image(self, sequence, index):
-        # check whether end of file is reached
-        if not os.path.exists(
-                self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg'):
-            self.imageFifo.pop()
-            if len(self.imageFifo) == 0:
-                return True
-        # add image to the FIFO
-        self.buffer = cv2.imread(
-            self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5)
-            + '.jpg')
-        self.imageFifo.appendleft(self.process_image(self.buffer))
-        return False
-
-    def bucket(self, points):
-        cells = [[[0, 0]] * self.HOR_CELLS] * self.VER_CELLS
-        filled = 0
-        full = self.HOR_CELLS * self.VER_CELLS
-        points1, points2 = points[0], points[1]
-        b = self.width / self.HOR_CELLS
-        h = (self.height - self.horizon) / self.VER_CELLS
-        for point in points1:
-            x, y = int(point[0] / b), int(point[1] / h)
-            if all(v == 0 for v in cells[y][x]):
-                cells[y][x] = np.array(point)
-                filled += 1
-            if filled == full:
-                break
-        cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
-        return cells
-
     def read_images(self, sequence):
+        """
+        Read and interact with the images of a sequence, possibilities are the following:
+            n: read the next image in the sequence and display it
+            p: read previous image in the sequence and display it
+            j: Jump forward in sequence (amount entered via console) and display image
+            b: Jump backward in sequence (amount entered via console) and display image
+            space bar: continuously step forward in the sequence and display image (until space bar is pressed again)
+            t: Manually step through keypoints of current image and matches with next image. Press G to save match,
+               press any key to discard match
+            l: Load saved keypoint matches of current image with next image and display
+            u: Test function
+            v: Calculate homography, decompose it and predict horizon based on normal vector
+            q: Quit program
+            :param sequence:
+            :return:
+        """
         bufindex = 0
         index = self.BUF_SIZ + 1
         self.read_info(sequence)
@@ -482,11 +449,97 @@ class Sequencer:
         cv2.destroyAllWindows()
         return
 
+    def create_mask(self, sequence):
+        """
+        Read mask of ego-car and store it for later use (depending on the use of color images the mask is different)
+        :param sequence:
+        :return:
+        """
+        ego_car = cv2.imread(self.folder + '/SEQ' + str(sequence).zfill(3) + 'BW.jpg')
+        (T, ego_car) = cv2.threshold(ego_car, 127, 255, cv2.THRESH_BINARY)
+        self.mask = cv2.cvtColor(ego_car, cv2.COLOR_BGR2GRAY)
+        self.ego_car = ego_car / 255
+        if self.color == 0:
+            self.black = [0]
+        else:
+            self.black = [0, 0, 0]
+        self.ego_car = self.ego_car[self.horizon:self.height, 0:self.width]
+        self.mask = self.mask[self.horizon:self.height, 0:self.width]
+
+    def fill_fifo(self, sequence, start, stop):
+        """
+        Fill FIFO with images from index "start" until index "stop" after being processed, keep last new image in buffer
+        :param sequence:
+        :param start:
+        :param stop:
+        :return:
+        """
+
+        for i in range(start, stop):
+            # check whether end of file is reached
+            if not os.path.exists(
+                    self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(i).zfill(5) + '.jpg'):
+                return
+            self.buffer = cv2.imread(self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(i)).zfill(5)
+                                     + '.jpg')
+            self.imageFifo.appendleft(self.process_image(self.buffer))
+            self.detect(self.imageFifo[0], 0)
+
+    def add_next_image(self, sequence, index):
+        """
+        Add next image to FIFO after preprocessing and store original in buffer
+        :param sequence:
+        :param index:
+        :return:
+        """
+        # check whether end of file is reached
+        if not os.path.exists(
+                self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5) + '.jpg'):
+            self.imageFifo.pop()
+            if len(self.imageFifo) == 0:
+                return True
+        # add image to the FIFO
+        self.buffer = cv2.imread(
+            self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5)
+            + '.jpg')
+        self.imageFifo.appendleft(self.process_image(self.buffer))
+        return False
+
+    def bucket(self, points):
+        # TODO: check if function can be removed
+        """
+        Divide image into buckets, keep only one keypoint for each bucket.
+        :param points:
+        :return: Array of remaining keypoints (max 1 per bucket)
+        """
+        cells = [[[0, 0]] * self.HOR_CELLS] * self.VER_CELLS
+        filled = 0
+        full = self.HOR_CELLS * self.VER_CELLS
+        points1, points2 = points[0], points[1]
+        b = self.width / self.HOR_CELLS
+        h = (self.height - self.horizon) / self.VER_CELLS
+        for point in points1:
+            x, y = int(point[0] / b), int(point[1] / h)
+            if all(v == 0 for v in cells[y][x]):
+                cells[y][x] = np.array(point)
+                filled += 1
+            if filled == full:
+                break
+        cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
+        return cells
+
     def decompose_homography(self, homography, points):
+        """
+        Decompose homography and select the right motion parameters
+        :param homography:
+        :param points:
+        :return: Correct motion paramters
+        """
         retval, rotations, translations, normals = cv2.decomposeHomographyMat(homography, self.K)
         motion = None
         best = 0
         for i in range(retval):
+            # Check whether motion parameters could be right and how many points are "good points"
             possible, goodpoints = check_possibility(rotations[i], translations[i], normals[i], points)
             if possible and goodpoints > best:
                 motion = (rotations[i], translations[i], normals[i])
@@ -494,11 +547,18 @@ class Sequencer:
         return motion
 
     def to_birds_eye_view(self, image, h):
+        # TODO: Remove  faulty function
         out = cv2.warpPerspective(image, h, (self.width, self.height))
         cv2.imshow('birdseyview', out)
         cv2.waitKey(0)
 
     def find_homography(self, index, title):
+        """
+        Estimate homography between frames index and index + 1
+        :param index:
+        :param title:
+        :return: Boolean: homography found or not, homography, points used to find homography in second frame
+        """
         # Calculate homography and decompose it
         good_matches = self.load_points(index, title, 0)
         points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
@@ -513,13 +573,18 @@ class Sequencer:
             return False, None, None
         # print("Calculating Homography:")
         H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-        # print(H)
-        # print("Decomposing Homography")
+        # TODO: Remove decomposition and update of transformation
         retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
         self.update_transformations(rotations[0], translations[0])
         return True, H, points2
 
     def find_essential(self, index, title):
+        """
+        Estimate essential matrix between frames index and index + 1
+        :param index:
+        :param title:
+        :return: Boolean: essential matrix found or not, E matrix
+        """
         # Calculate homography and decompose it
         good_matches = self.load_points(index, title, 1)
         points1 = np.zeros((len(good_matches), 2), dtype=np.int32)
@@ -531,13 +596,20 @@ class Sequencer:
             i += 1
         if i < 5:
             print("Not enough matches")
-            return False
+            return False, None
         E, = cv2.findEssentialMat(points1, points2, self.K, cv2.RANSAC)
+        # TODO: remove decomposition and transformation update
         R1, R2, t = cv2.decomposeEssentialMat(E)
         self.update_transformations(R1, t)
-        return True
+        return True, E
 
     def update_transformations(self, rotation, translation):
+        """
+        Updates transformation of car with current motion
+        :param rotation: rotation matrix (3x3)
+        :param translation: translation vector(3x1)
+        :return:
+        """
         T = form_transformation_matrix(rotation, translation)
         self.transformation = np.matmul(self.transformation, T)
         current_position = np.array([self.transformation[0][3],
@@ -548,6 +620,14 @@ class Sequencer:
         self.angles = np.append(self.angles, [angles], axis=0)
 
     def load_points(self, index, title, point_type=0):
+        """
+        Load keypoints and matches between frame on index and index + 1
+        If not keypoints stored yet, let user select them manually
+        :param index: current index
+        :param title: path name of current sequence
+        :param point_type: 0 is points on plane, 1 is points everywhere
+        :return: Matches between keypoints (loaded or selected)
+        """
         # point_type 0 is points on a plane->homography, type 1 is all points->essential matrix
         if point_type == 0:
             filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + "-" + str(
@@ -567,6 +647,14 @@ class Sequencer:
         return good_matches
 
     def test(self, index, title, height, angle):
+        """
+        Test function
+        :param index:
+        :param title:
+        :param height:
+        :param angle:
+        :return:
+        """
         # k = ''
         # while k != ord('q'):
         #     angle = input("Give angle: ")
@@ -586,7 +674,7 @@ class Sequencer:
         if motion is None:
             print("No good motion parameters")
             return False, None
-        bev = self.create_birds_eye_view(index, title, motion[2], motion[1], height, angle)
+        bev = self.create_birds_eye_view(motion[2], height, angle)
         cv2.imshow("birds eye view", bev)
         k = cv2.waitKey(0)
         cv2.destroyWindow('birds eye view')
@@ -594,7 +682,14 @@ class Sequencer:
             return False, None
         return True, k
 
-    def create_birds_eye_view(self, index, title, normal, translation, height=2000, angle=1):
+    def create_birds_eye_view(self, normal, height=2000, angle=1):
+        """
+        Compose bird's eye view of current frame by warping perspective
+        :param normal: plane normal vector (3x1)
+        :param height: (height of camera)
+        :param angle: (
+        :return: bird's eye view
+        """
         # rotation = make_rotation_matrix(self.CAMERA_ANGLE_X, 0, self.CAMERA_ANGLE_Z, radians=False)
         # translation = np.zeros((3, 3))
         # translation[0][0] = 1
@@ -626,6 +721,15 @@ class Sequencer:
         return bev
 
     def select_keypoints(self, index, title, point_type=-1):
+        """
+        Manually walk through keypoint matches between frame on index and index + 1.
+        Select good matches by pressing 'G', discard match by pressing 'B'
+        Store these matches for later reuse
+        :param index: index of current frame
+        :param title: Title of window for showing purposes
+        :param point_type: 0 for points on ground plane, 1 for all points, -1 to ask for user input.
+        :return: good matches
+        """
         if point_type == -1:
             point_type = input("\n0. Homography\n1. Essential")
             while point_type != '0' and point_type != '1':
@@ -677,6 +781,12 @@ class Sequencer:
         return np.array(good_matches)
 
     def create_patch(self, image, point):
+        """
+        Create small patch of image around point
+        :param image: Image to take patches from
+        :param point: Point around which patch should be made
+        :return: patch
+        """
         cross_color = (255, 255, 255)
         patch = copy(image[point[1] - self.WINDOW // 2:point[1] + self.WINDOW // 2,
                 point[0] - self.WINDOW // 2: point[0] + self.WINDOW // 2])
@@ -689,6 +799,14 @@ class Sequencer:
         return patch
 
     def dispose(self, kp_des, point_type):
+        """
+        Remove excess of keypoints by:
+            Bucketing keypoints (see function "bucket()")
+            Removing points above the horizon (if point_type is 0)
+        :param kp_des: array of keypoints with their respective descriptor
+        :param point_type: 0 for points on plane, 1 for all points
+        :return: remaining keypoints and descriptors
+        """
         if point_type == 1:
             check_horizon = False
         else:
@@ -728,6 +846,20 @@ class Sequencer:
         return keypoints, descriptors
 
     def read_info(self, sequence):
+        """
+        Read info of info file:
+            dimensions of footage
+            channels
+            amount of frmaes
+            horizon: height of horizon on the left (empirically chosen)
+            y2: height of horizon on the right side (empirically chosen)
+        Calculate based on these:
+            principal point
+            a, b and c: parameters of horizon line
+            Camera matrix K
+        :param sequence: Sequence number
+        :return:
+        """
         info = open('Videos/sequence_' + str(sequence).zfill(3) + '/info.txt', 'r')
         info.readline()
         self.height = int(info.readline().split(' ')[-1])
@@ -751,6 +883,12 @@ class Sequencer:
         self.K_extra = np.matmul(self.K, unity)
 
     def detect(self, image, pos=0):
+        """
+        Detect keypoints and compute descriptors in image
+        :param image: Image to detect keypoints on
+        :param pos: position in the FIFO (going forwards or backwards)
+        :return:
+        """
         kp, des = self.orb.detectAndCompute(image, self.mask)
         if pos == 0:
             self.pointsFifo.appendleft((kp, des))
@@ -758,6 +896,7 @@ class Sequencer:
             self.pointsFifo.append((kp, des))
 
     def detect_and_match(self):
+        # TODO: Remove function if necessary
         # convert images in buffer to grayscale
         img1 = self.imageFifo[-1]
         img2 = self.imageFifo[-2]
@@ -799,12 +938,25 @@ class Sequencer:
         return [points1, points2]
 
     def process_image(self, image):
+        """
+        Pre process image:
+            convert to grayscale
+            crop image, removing everything above "horizon"
+        :param image:
+        :return:
+        """
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         # image = cv2.circle(image, self.principal_point, radius=5, color=(255, 0, 0), thickness=3)
         image = image[self.horizon:self.height, 0:self.width]
         return image
 
     def show_image(self, points, image):
+        """
+        Prepare image to be shown
+        :param points: keypoints to be drawn on image
+        :param image: image to be shown
+        :return: Image ready to be shown
+        """
         img = reduce_contrast(image)
         # converted to BGR so keypoints can be shown in color
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -823,9 +975,18 @@ class Sequencer:
         return img
 
     def cropped_to_original(self, coordinate):
+        """
+        Transfer image coordinates from original to cropped
+        :param coordinate: coordinate to transfer
+        :return: coordinate in original image
+        """
         return [coordinate[0], coordinate[1] + self.horizon]
 
     def plot_positions(self):
+        """
+        Plot position in 3D graph
+        :return:
+        """
         xdata = np.array([])
         ydata = np.array([])
         zdata = np.array([])
@@ -838,6 +999,10 @@ class Sequencer:
         self.pos_plot.show()
 
     def plot_angles(self):
+        """
+        Plot euler angles of rotation
+        :return:
+        """
         angles = np.transpose(self.angles)
         phis = angles[0]
         psis = angles[1]
@@ -850,12 +1015,22 @@ class Sequencer:
         self.angles_plot.show()
 
     def vcf_to_ccf(self, vector):
+        """
+        Convert vector from vehicle coordinate frame to camera coordinate frame
+        :param vector: vector (3X1)
+        :return: converted vector
+        """
         r_vcf_to_ccf = make_rotation_matrix(self.CAMERA_ANGLE_X, self.CAMERA_ANGLE_Y, self.CAMERA_ANGLE_Z, radians=False)
         ccf = np.matmul(r_vcf_to_ccf, vector)
         ccf = np.add(ccf, self.T_VCF_CCF)
         return ccf
 
     def ccf_to_vcf(self, vector):
+        """
+        Convert vector from camera coordinate frame to vehicle coordinate frame
+        :param vector: vector (3X1)
+        :return: converted vector
+        """
         r_ccf_to_vcf = np.transpose(make_rotation_matrix(self.CAMERA_ANGLE_X,
                                                          self.CAMERA_ANGLE_Y,
                                                          self.CAMERA_ANGLE_Z, radians=False))
@@ -864,6 +1039,11 @@ class Sequencer:
         return vcf
 
     def vcf_to_wcf(self, vector):
+        """
+        Convert vector from vehicle coordinate frame to world coordinate frame
+        :param vector: vector (3X1)
+        :return: converted vector
+        """
         # invert transformation of car so far
         t = invert_transform_matrix(self.transformation)
         vector = np.append(np.array(vector), [1])
@@ -874,6 +1054,11 @@ class Sequencer:
         return wcf
 
     def wcf_to_vcf(self, vector):
+        """
+        Convert vector from world coordinate frame to vehicle coordinate frame
+        :param vector: vector (3X1)
+        :return: converted vector
+        """
         # rotate 180° around z-axis
         r = make_rotation_matrix(0, 0, 180, radians=False)
         vcf = np.matmul(r, vector)
@@ -883,16 +1068,32 @@ class Sequencer:
         return vcf
 
     def wcf_to_ccf(self, vector):
+        """
+        Convert vector from world coordinate frame to camera coordinate frame
+        :param vector: vector (3X1)
+        :return: converted vector
+        """
         vcf = self.wcf_to_vcf(vector)
         ccf = self.vcf_to_ccf(vcf)
         return ccf
 
     def ccf_to_wcf(self, vector):
+        """
+        Convert vector from camera coordinate frame to world coordinate frame
+        :param vector: vector (3X1)
+        :return: converted vector
+        """
         vcf = self.ccf_to_vcf(vector)
         wcf = self.vcf_to_wcf(vcf)
         return wcf
 
     def estimate_horizon(self, normal):
+        """
+        Estimate horizon line based on plane normal vector
+        Show for verifying purposes
+        :param normal: Ground plane normal vector
+        :return:
+        """
         p = self.find_point_under_camera(normal)
         d = -self.T_VCF_CCF[1]
         point1 = point_in_distance(normal, 70, 100000, d)
@@ -913,9 +1114,12 @@ class Sequencer:
         cv2.waitKey(0)
         cv2.destroyWindow('horizon')
 
-        return
-
     def find_point_under_camera(self, normal):
+        """
+        Find point under camera on ground plane
+        :param normal: Ground plane normal vector
+        :return: Point under camera
+        """
         d = self.T_VCF_CCF[1]
         return d * normal
 
