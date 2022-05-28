@@ -13,6 +13,12 @@ from copy import copy
 
 
 def rotate_image(image, angle):
+    """
+    Rotate image over angle
+    :param image: image to ratate
+    :param angle: angle over which to rotate
+    :return: rotated image
+    """
     height, width = image.shape[:2]
     center = (width / 2, height / 2)
     R = cv2.getRotationMatrix2D(center, angle, 1)
@@ -21,6 +27,11 @@ def rotate_image(image, angle):
 
 
 def rotation_matrix_to_euler_angles(rotation_matrix):
+    """
+    convert rotation matrix to its Euler angles
+    :param rotation_matrix: rotation matrix
+    :return: Euler angles
+    """
     sy = math.sqrt(rotation_matrix[0, 0] * rotation_matrix[0, 0] + rotation_matrix[1, 0] * rotation_matrix[1, 0])
 
     singular = sy < 1e-6
@@ -38,12 +49,23 @@ def rotation_matrix_to_euler_angles(rotation_matrix):
 
 
 def reduce_contrast(image):
+    """
+    Reduce contrast in image to better view keypoints and matches
+    :param image: image to reduce contrast of
+    :return: contrast reduced image
+    """
     mapper = np.vectorize(lambda x: (x * 127) // 255 + 128)
     image = mapper(image).astype(np.uint8)
     return image
 
 
 def form_transformation_matrix(r, t):
+    """
+    Form transformation matrix (4x4) from rotation and translation
+    :param r: rotation matrix (3x3)
+    :param t: translation vector (3x1)
+    :return: transformation matrix
+    """
     T = np.zeros((4, 4))
     T[3][3] = 1
     for i in range(3):
@@ -55,14 +77,32 @@ def form_transformation_matrix(r, t):
 
 
 def rad_to_deg(angle):
+    """
+    Convert angle from radians to degrees
+    :param angle: angle in radians
+    :return: angle in degrees
+    """
     return angle / (2 * math.pi) * 360
 
 
 def deg_to_rad(angle):
+    """
+    Convert angle from degrees to radians
+    :param angle: angle in degrees
+    :return: angle in radians
+    """
     return angle / 360.0 * 2 * math.pi
 
 
 def make_rotation_matrix(theta, psi, phi, radians=True):
+    """
+    Form rotation matrix from Euler angles
+    :param theta: Rotation angle around x-axis
+    :param psi: Rotation angle around y-axis
+    :param phi: Rotation angle around z-axis
+    :param radians: Boolean to denote if angles are given in radians or not
+    :return: rotation matrix (3x3)
+    """
     if not radians:
         theta = deg_to_rad(theta)
         psi = deg_to_rad(psi)
@@ -87,6 +127,14 @@ def make_rotation_matrix(theta, psi, phi, radians=True):
 
 
 def rot_mat(theta, psi, phi, radians=True):
+    """
+    Form rotation matrix from Euler angles
+    :param theta: Rotation angle around x-axis
+    :param psi: Rotation angle around y-axis
+    :param phi: Rotation angle around z-axis
+    :param radians: Boolean to denote if angles are given in radians or not
+    :return: rotation matrix (3x3)
+    """
     if not radians:
         theta = deg_to_rad(theta)
         psi = deg_to_rad(psi)
@@ -104,6 +152,14 @@ def rot_mat(theta, psi, phi, radians=True):
 
 
 def check_possibility(rotation, translation, normal, points):
+    """
+    Check if combination of motion parameters is a possible decomposition of homography
+    :param rotation: Rotation matrix (3x3)
+    :param translation: Translation vector (3x1)
+    :param normal: Normal vector (3x1)
+    :param points: keypoints (after motion)
+    :return: Boolean that states if solution is possible and amount of keypoints that are correct
+    """
     # If translation goes negative along z-axis: car is going backwards so not possible
     if translation[2] < 0:
         return False, 0
@@ -125,6 +181,11 @@ def check_possibility(rotation, translation, normal, points):
 
 
 def invert_transform_matrix(t_mat):
+    """
+    Invert transformation matrix
+    :param t_mat: transformation matrix
+    :return: inverted transformation matrix
+    """
     rotation = np.zeros((4, 4))
     translation = np.zeros((4, 4))
     # Transpose rotation part of T
@@ -171,6 +232,13 @@ def rotation_matrix_from_vectors(vec1, vec2):
 
 
 def get_horizon_point(p1, p2, x):
+    """
+    Calculate y-value of point on horizon line going through p1 and p2
+    :param p1: point1
+    :param p2: point2
+    :param x: x-value of point
+    :return: Point with x = x-value on horizon line
+    """
     a = p1[1] - p2[1]
     b = p2[0] - p1[0]
     c = p1[0] * p2[1] - p2[0] * p1[1]
@@ -179,6 +247,15 @@ def get_horizon_point(p1, p2, x):
 
 
 def point_in_distance(normal, x, z, d):
+    """
+    Find y-value of point in the distance on plane with given normal vector (given its x and z coordinate and the
+    distance of the camera center to the plane)
+    :param normal:
+    :param x:
+    :param z:
+    :param d:
+    :return: Point in the distance (in homogeneous coordinates)
+    """
     a, b, c = normal
     if b == 0:
         return None
