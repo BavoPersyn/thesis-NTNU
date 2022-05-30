@@ -263,6 +263,14 @@ def point_in_distance(normal, x, z, d):
     return np.array([x, y[0], z, 1])
 
 
+def points_on_line(a, b, c, width):
+    x1 = 0
+    x2 = width
+    y1 = -(a * x1 + c)/b
+    y2 = -(a * x2 + c)/b
+    return np.array([[x1, y1],[x2, y2]])
+
+
 # noinspection SpellCheckingInspection
 class Sequencer:
     SEQ_NUM = 1
