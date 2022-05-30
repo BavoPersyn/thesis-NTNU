@@ -436,7 +436,7 @@ In this section I will use point-to-point correspondences between two frames. I 
 
 In general, we have a perspective model because we work with a camera that can be simplified to the pinhole camera model as described in \autoref{sec:cammodel}. The equations that relate motion to the image coordinates are non-linear in the motion parameters \cite{tekalp}. A two-step linear algorithm has been developed by T. S. Huang \cite{improc} in order to get the motion parameters from (at least eight) point correspondences. Doing this, an intermediate essential matrix $\ME$, consisting of the so called essential parameters is estimated. The way this algorithm works will be discussed in detail later on.
 
-\subsubsection{Essential matrix}
+\subsubsection{Essential matrix}\label{sssec:essential_matrix}
 The essential matrix encodes the epipolar geometry of two images. Thus, to break down the essential matrix, we need to have a look at epipolar geometry. \autoref{fig:epigeo} shows a camera in two positions $O_L$ and $O_R$. Point $X$ is projected onto the left image plane resulting in $X_L$ and onto the right image plain resulting in $X_R$.\bigskip
 
 The points $e_L$ and $e_R$ are called the epipoles or epipolar points. They are the projection of the other camera position (its perspective center) onto the image plane. They lay on one line together with the perspective centers $O_L$ and $O_R$.\bigskip
@@ -476,7 +476,7 @@ where $\MR$ is the $3 \times 3$ rotation matrix and $\vt$ the translation vector
 The OpenCV method \textit{findEssentialMat} can be used to estimate the essential matrix based on matched keypoints between two frames. In the following we will explain the way this works.\bigskip
 
 In \cite{improc} T. S. Huang proposed that with at least eight keypoint matches a two-step linear algorithm can be developed. To do this, intermediate values called essential parameters need to be estimated first. These essential parameters form a matrix $\ME$ called the essential matrix:
-\begin{equation}
+\begin{equation}\label{eq:essential_def}
     \ME = 
     \begin{pmatrix}
         e_1&e_2&e_3 \\
