@@ -281,12 +281,19 @@ def points_on_line(a, b, c, width):
 
 
 def point_in_range(point, a, b, c, threshold=10):
+    """
+    Checks whether point lays close enough to line defined by ax + bx + c = 0
+    :param point: point to check
+    :param a:
+    :param b:
+    :param c:
+    :param threshold: max distance to line
+    :return: Boolean that states if points lays close enough or not
+    """
     x = point[0]
     y = point[1]
-    below = a*x + b*y + c
-    if abs(below) > b * threshold:
-        return False
-    return True
+    distance = abs(a*x + b*y + c)/math.sqrt(a**2 + b**2)
+    return distance <= threshold
 
 
 # noinspection SpellCheckingInspection
