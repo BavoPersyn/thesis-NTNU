@@ -78,7 +78,7 @@ Practically, I divided the image in a grid of 40 by 20, leaving us with 800 buck
     \label{fig:bucketing}
 \end{figure}
 
-\subsection{Removing keypoints above the horizon}
+\subsection{Removing keypoints above the horizon}\label{ssec:horizon}
 As discussed before, we are looking for keypoints that are part of the road surface. Keypoints above the horizon can thus be discarded as we can say with absolute certainty that these will not be a part of the road surface. For now, we will determine the horizon empirically, in a later stage, when we have found the normal vector $\vn$ it will be possible to estimate the horizon based on this.\bigskip
 
 As stated before, the footage we have is from a camera that is mounted tilted. This means we are not able to simply discard all keypoints above a horizontal line. We describe the horizon as a linear equation of the form
@@ -98,7 +98,7 @@ Multiplying both sides by $(x_2-x_1)$ gives the following equation, which is als
     (x_2-x_1)(y-y_1) - (y_2-y_1)(x-x_1) = 0
 \end{equation}
 which can be rewritten as
-\begin{equation}
+\begin{equation}\label{eq:line}
     (y_1-y_2)x + (x_2-x_1)y + (x_1y_2-x_2y_1) = 0
 \end{equation}
 For now an estimation suffices so we chose two points empirically. In \autoref{ssec:irrelevant} we already chose a height to cut off irrelevant information, this height was chosen based on the horizon. For $p_1$ we take this height as $y_1$ and as the camera is tilted to the right this is the leftmost point and $x_1 = 0$. For $p_2$ we chose a point at the utmost right of the image so $x_2$ is equal to the width of the image. For $y_2$ we choose a value by simply looking what seems to be the best option. \bigskip
@@ -120,7 +120,7 @@ For now an estimation suffices so we chose two points empirically. In \autoref{s
 
 For illustrating purposes, the contrast in the images is lowered by mapping the gray values between [0, 255] to [128, 255]. By doing this, the image is still clearly visible to the human eye but keypoints and the motion vectors are more visible.
 
-\section{Matching keypoints}
+\section{Matching keypoints}\label{sec:matching}
 The point in finding the keypoints is to know where these specific points are in another image. Note that the filtering described in \autoref{sec:filtering} is only done on the oldest image. If we were to filter both images, chances are big we would be left with no good matches. After all, there is no way of guaranteeing that the right match of a keypoint that is not filtered will also be unfiltered in the second image.\bigskip
 
 \subsection{Descriptor based matching}
@@ -153,15 +153,6 @@ Recall that we are looking for a homography between the ground plane in the two 
     \caption{Wrongly matched keypoints}
     \label{fig:bad_match}
 \end{figure}
-
-\section{Using known motion as bias for further estimating}
-It is clear that what I have described in the previous sections is a lot of work that has to be done manually. Recall that the goal is to have a system that can do all this autonomously. Manually selecting keypoints and checking each match for its validity is hardly autonomous. However, I intend to do this only once, to "jump start" the system.\bigskip 
-
-Once the system has an initial idea of the motion, that is translation and rotation, of the vehicle as well as an estimate of the normal vector of the road surface, it is possible to use these in order to narrow down the search for keypoints, matches etc.\bigskip
-
-Suppose, after carefully selecting and matching keypoints manually, we have a good estimate for the motion of the vehicle. It is then possible to estimate where the known keypoints will be located approximately after this motion continued to the next frame. Assuming the motion stays exactly the same is of course wrong, but given that frame are taken in short interval (in our case $1/30^{th}$ of a second) we can assume that the motion will not differ that much so we have a rough idea of where to look for the keypoints we encountered in the previous frame.\bigskip
-
-When using this way of recursively using the previous detected keypoints and motion as bias, the search for and matching of keypoints will be easier as there is less space to look for and thus also faster. It goes without saying that a good bias is important, that is why we need to carefully select the good keypoints and matches. 
 
 \section{Estimating 3D motion from sets of 2D point correspondences}
 \subsection{Determining motion}
@@ -252,3 +243,151 @@ With
 \end{flalign*}
 
 Recall from \autoref{eq:homography} how a homography is defined. The homography between the original image and the bird's eye view is thus $\MH = \MR + \vt\vn^T$ with $\MR$ being the rotation matrix calculated in \autoref{eq:bev_rotation}, $\vn$ the plane normal vector and $\vt$ the translation to move the image plane above the ground plane.
+
+\section{Horizon line estimation}\label{sec:horizon}
+In \autoref{ssec:horizon} we defined a horizon line by manually selecting two points on the horizon line. We used this line to filter the keypoints above the horizon as we have no need for these in the estimation of a homography. But using an empirically based horizon has its flaws; the car (and thus the camera) moves and rotates so the horizon on the image is not something fixed. To overcome this, we need to estimate where the horizon lies in each frame rather than use this fixed horizon line.\bigskip
+
+We know the normal vector of the ground plane from decomposing the homography. The horizon line is a collection of those points that lay very far away on that plane. By finding two such points and their corresponding projections on the image plane, we can find where the horizon lies.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/plane_with_p.png}
+    \caption{Camera frame with ground plane}
+    \label{fig:plane_with_d}
+\end{figure}
+
+\autoref{fig:plane_with_d} shows the situation with our known variables. The plane defined by the normal vector $\vn = (n_1, n_2, n_3)^T$ is defined like this:
+\begin{equation}\label{eq:plane1}
+    n_1X_1 + n_2X_2 + n_3X_3 = a
+\end{equation}
+Where $a$ is an unknown factor for now, to find this, let us look at another way of writing this plane equation is, using a known point $\vp = (p_1, p_2, p_3)^T$:
+\begin{equation}\label{eq:plane2}
+    n_1(X_1 - p_1) + n_2(X_2 - p_2) + n_3(X_3 - p_3) = 0
+\end{equation}
+Rearranging this \autoref{eq:plane2} to match \autoref{eq:plane1} gives us the following:
+\begin{equation}
+    n_1X_1 + n_2X_2 + n_3X_3 -(n_1p_1 + n_2p_2 + n_3p_3) = 0
+\end{equation}
+In other words, the factor $a$ is defined like this:
+\begin{equation}\label{eq:a_factor}
+    a = n_1p_1 + n_2p_2 + n_3p_3
+\end{equation}
+Now to find this factor $a$, we need to use a point laying on the plane. We will use the point that lays directly below the camera center. Assuming the height of the camera is $d$, this point is defined as
+\begin{equation}
+    \vp = -d\vn
+\end{equation}
+because $\vp$ is the opposite of $\vn$ with length d. So we have the following:
+\begin{equation}
+    \vp = \begin{pmatrix}
+        -d n_1 \\ -d n_2 \\ -d n_3
+    \end{pmatrix}
+\end{equation}
+Substituting these values in \autoref{eq:a_factor} gives us
+\begin{equation}
+    a = -d n_1^2 - d n_2^2 - d n_3^2
+\end{equation}
+\begin{flalign*}
+    &= -d(n_1^2 + n_2^2 + n_3^2) \\
+    &= -d
+\end{flalign*}
+As we know, the normal vector $\vn$ is a unit vector so its length, defined as the sum of squares of $n_i$, is equal to one. This gives us the equation for our ground plane
+\begin{equation}
+    n_1X_1 + n_2X_2 + n_3X_3 = -d
+\end{equation}
+Now we need to find two points on this plane that lay far away. One way to do this is pick points of a circle with a big radius on the ground plane and its center below the camera. Such a circle, as seen in \autoref{fig:circle_on_groundplane}, can be defined as the intersection between a sphere with radius $r$ and center $\vp$ and the ground plane like this:
+\begin{equation}\label{eq:circle}
+    \left\{ \begin{array}{ll}
+         & (X_1 - p_1)^{2} + (X_2 - p_2)^{2} + (X_3 - p_3)^{2} = r^{2} \\
+         & n_1X_1 + n_2X_2 + n_3X_3 = -d
+    \end{array} \right.
+\end{equation}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/plane_with_circle.png}
+    \caption{Ground plane with circle}
+    \label{fig:circle_on_groundplane}
+\end{figure}
+When the radius $r$ gets big, the points on the circle are far away from the center point $\vp$ and thus far away from the camera. Of course we want points that are in front of the camera so $X_3$ should be positive. To make sure that the points are in the field of view of the camera we make sure that $X_3$ is also rather big. So with a fixed $r$ and $X_3$, we can freely pick values for $X_1$ and $X_2$, provided they meet \autoref{eq:circle}. We do this by choosing a random value for $X_1$ which will fix the value for $X_2$.\bigskip
+
+Let us call the two points we now have $\vq_1$ and $\vq_2$. To find their corresponding projections on the image plane $q_{1}^{'}$ and $q_{2}^{'}$, we use the camera matrix $\MK$ as in \autoref{eq:improj} giving us two points on the image:
+
+\begin{equation}
+    k\begin{pmatrix}
+        q_{1, 1}^{'} \\ q_{1, 2}^{'} \\ 1
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        f & 0 & h_x & 0\\ 
+        0 & f & h_y & 0\\ 
+        0 & 0 & 1 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        q_{1,1} \\ q_{1,2} \\ q_{1,3} \\ 1
+    \end{pmatrix}
+\end{equation}
+
+\begin{equation*}
+    k\begin{pmatrix}
+        q_{2, 1}^{'} \\ q_{2, 2}^{'} \\ 1
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        f & 0 & h_x & 0\\ 
+        0 & f & h_y & 0\\ 
+        0 & 0 & 1 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        q_{2,1} \\ q_{2,2} \\ q_{2,3} \\ 1
+    \end{pmatrix}
+\end{equation*}
+
+Using \autoref{eq:line} we find the estimation of our horizon line.
+
+\section{Using known motion as bias for further estimating}
+It is clear that what I have described in the \autoref{sec:filtering} and \label{sec:matching} is a lot of work that has to be done manually. Recall that the goal is to have a system that can do all this autonomously. Manually selecting keypoints and checking each match for its validity is hardly autonomous. However, it is intended to do this only once, to "jump start" the system.\bigskip 
+
+Once the system has an initial idea of the motion, that is translation and rotation, of the vehicle as well as an estimate of the normal vector of the road surface, it is possible to use these in order to narrow down the search for keypoints, matches etc.\bigskip
+
+Suppose, after carefully selecting and matching keypoints manually, we have a good estimate for the motion of the vehicle. It is then possible to estimate where the known keypoints will be located approximately after this motion continued to the next frame. Assuming the motion stays exactly the same is of course wrong, but given that frame are taken in short interval (in our case $1/30^{th}$ of a second) we can assume that the motion will not differ that much so we have a rough idea of where to look for the keypoints we encountered in the previous frame.\bigskip
+
+When using this way of recursively using the previous detected keypoints and motion as bias, the search for and matching of keypoints will be easier as there is less space to look for and thus also faster. It goes without saying that a good bias is important, that is why we need to carefully select the good keypoints and matches.\bigskip
+
+\subsection{Propagating keypoints}
+In \autoref{sssec:essential_matrix} I talked about epipolar geometry and how a point in one image corresponds to a line in another image. This epipolar constraint can be described using the essential matrix. Using keypoint matches between consecutive frames $N-1$ and $N$ we were able to estimate this essential matrix. If we now assume that the the relation between frames $N$ and $N+1$ is the same as the relation between frames $N-1$ and $N$, we can predict the epipolar lines on frame $N+1$ on which we can find the keypoints from frame $N$.\bigskip
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{figures/epipolar.png}
+    \caption{Epipolar constraint between }
+    \label{fig:epipoles}
+\end{figure}
+
+To know how to find the epipolar lines, let us look at at how a point in frame $N-1$ corresponds to an epipolar line in $N$. Take 3-D point $p=(p_1, p_2, p_3)^T$, when a camera is located at $C_1$ as in \autoref{fig:epipoles}, $p$ is projected on the image plane resulting in $x_1=(x_{1, 1}, x_{1, 2}, 1)^T$. This projection is defined by the camera matrix $\MK$. \bigskip 
+
+After the camera moved according to $\MR$ and $\vt$ the camera is located at $C_2$. Point $p$ is now projected using the same camera matrix onto the second image frame resulting in $x_2=(x_{2, 1}, x_{2, 2}, 1)^T$. However, without knowing the exact location of point $p$, we can no know for certain where $x_2$ will lay on the image plane. All we know from the first image is that point $p$ lays somewhere on the line $\overline{C_1p}$. This line is projected on the second image frame: $l_2$.\bigskip
+
+To find the epipolar line $l_2$ I introduce the \newterm{fundamental matrix} $\MF$. The fundamental matrix is closely related to the essential matrix. It maps a point on an image to an epipolar line on a second image. The relation between essential and fundamental matrix is like this:
+\begin{equation}
+    \ME = \MK^T\MF\MK
+\end{equation}
+Rearranging this to find $\MF$ we have:
+\begin{equation}
+    \MF = \MK^{-T}\ME\MK^{-1}
+\end{equation}
+Using the essential matrix $\ME$ formed by the rotation $\MR$ and translation $\vt$ of the camera (see \autoref{eq:essential_def}), we can predict this line like this:
+\begin{equation}\label{eq:epiline}
+    l_2 = \MK^{-T}\ME\MK^{-1}x_1
+\end{equation}
+
+With this prediction of the epipolar line on the second image based on a keypoint on the first image, we can narrow the search for next keypoints down. Assuming the motion between frame $N-1$ and $N$ equals that between frame $N$ and $N+1$, we can use that motion to predict where a keypoint, already found on image $N$ will lay on image $N+1$ using \autoref{eq:epiline}.\bigskip
+
+Of course, the assumption that the motion stays exactly the same is wrong. However, as stated before, we may assume that the motion changed only slightly. Instead of looking for the new keypoints on the epipolar line, we expand the search area to the vicinity of that line. This gives us a good estimate of where we might find the keypoint making it easier and faster to look for the keypoint.\bigskip
+
+To check whether a certain keypoint in image $N+1$ is a potential match, we check that the keypoint lays close to the epipolar line. Take an epipolar line $l$ defined by
+\begin{equation}
+    ax + by + c = 0
+\end{equation}
+ The distance from a point $p = (p_1, p_2)^T$ to the line can be found like this
+\begin{equation}
+    distance(l, p) = \frac{|ap_1+bp_2+c|}{\sqrt{a^2+b^2}}
+\end{equation}
+To define close, we choose a threshold value $d$. Every point that has a distance to the epipolar line smaller or equal to $d$ is a potential match. From this reduced list of potential keypoints, we can then find the best match the same way as before.
