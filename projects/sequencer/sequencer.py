@@ -280,6 +280,20 @@ def points_on_line(a, b, c, width):
     return np.array([(int(x1), int(y1)), (int(x2), int(y2))])
 
 
+def point_in_range(point, a, b, c, threshold=10):
+    c_max = c + b * threshold
+    c_min = c - b * threshold
+    x = point[0]
+    y = point[1]
+    below = a*x + b*y + c_max
+    above = a*x + b*y + c_min
+    if below < 0:
+        return False
+    if above > 0:
+        return False
+    return True
+
+
 # noinspection SpellCheckingInspection
 class Sequencer:
     SEQ_NUM = 1
