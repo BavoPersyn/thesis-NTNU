@@ -264,6 +264,15 @@ def point_in_distance(normal, x, z, d):
 
 
 def points_on_line(a, b, c, width):
+    """
+    Finds two points on the line defined by ax + by + c = 0.
+    Points are the leftmost and rightmost points on an image with certain width
+    :param a:
+    :param b:
+    :param c:
+    :param width: width of image
+    :return: array of two points on the line
+    """
     x1 = 0
     x2 = width
     y1 = -(a * x1 + c)/b
