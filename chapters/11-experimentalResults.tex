@@ -1,1 +1,8 @@
 \chapter{Experimental Results}\label{chap:exp_results}
+
+\section{Homography Estimation}
+
+\section{Horizon Estimation}
+I described how to estimate the horizon line based on the normal vector of the ground plane in \autoref{sec:horizon}. We found the plane normal vector by decomposing the estimated homography between the ground plane of two consecutive images. In theory, when we have the right plane normal vector, we should have a good a good prediction of the horizon with the method proposed in \autoref{sec:horizon}.\bigskip
+
+We can thus use the predicted horizon line as visual check to rate the estimation of the homography (and with it the motion parameters and plane normal vector). Based on this outcome we divide keypoints in above- and below-horizon points. Above-horizon points can of course not be a part of the ground plane. Below horizon points have a chance of laying on the ground plane but there is no guarantee. A point that is part of an object close by could be below the horizon but is no part of the ground plane.
