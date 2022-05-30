@@ -268,7 +268,7 @@ def points_on_line(a, b, c, width):
     x2 = width
     y1 = -(a * x1 + c)/b
     y2 = -(a * x2 + c)/b
-    return np.array([[x1, y1],[x2, y2]])
+    return np.array([(int(x1), int(y1)), (int(x2), int(y2))])
 
 
 # noinspection SpellCheckingInspection
@@ -488,16 +488,33 @@ class Sequencer:
                 self.plot_angles()
             elif key == ord('l'):
                 # Load stored matches and show motion vectors
-                good_matches = self.load_points(index, title)
+                # Additionally, show epipolar lines
+                good_matches = self.load_points(index, title, 1)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
                 image = reduce_contrast(image)
                 image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+                points1 = np.zeros((len(good_matches), 2))
+                points2 = np.zeros((len(good_matches), 2))
+                i = 0
                 for match in good_matches:
                     point1 = (match[0], match[1])
                     point2 = (match[2], match[3])
+                    points1[i][0] = point1[0]
+                    points1[i][1] = point1[1]
+                    points2[i][0] = point2[0]
+                    points2[i][1] = point2[1]
+                    i = i + 1
                     image = cv2.circle(image, point1, radius=6, color=(255, 0, 0), thickness=3)
                     image = cv2.circle(image, point2, radius=6, color=(255, 0, 0), thickness=3)
                     image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
+                found, essential = self.find_essential(index, title)
+                if not found:
+                    print("nie gevonden")
+                else:
+                    lines = self.predict_epilines(essential, points1)
+                    for line in lines:
+                        pts = points_on_line(line[0][0], line[0][1], line[0][2], self.width)
+                        image = cv2.line(image, pts[0], pts[1], color=(255, 0, 0), thickness=1)
 
                 cv2.imshow(title, image)
             elif key == ord('u'):
@@ -683,7 +700,7 @@ class Sequencer:
         if i < 5:
             print("Not enough matches")
             return False, None
-        E, = cv2.findEssentialMat(points1, points2, self.K, cv2.RANSAC)
+        E, mask = cv2.findEssentialMat(points1, points2, self.K, cv2.RANSAC)
         # TODO: remove decomposition and transformation update
         R1, R2, t = cv2.decomposeEssentialMat(E)
         self.update_transformations(R1, t)
