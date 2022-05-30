@@ -263,6 +263,7 @@ def point_in_distance(normal, x, z, d):
     return np.array([x, y[0], z, 1])
 
 
+# noinspection SpellCheckingInspection
 class Sequencer:
     SEQ_NUM = 1
     BUF_SIZ = 2
