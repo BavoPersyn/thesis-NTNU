@@ -281,15 +281,10 @@ def points_on_line(a, b, c, width):
 
 
 def point_in_range(point, a, b, c, threshold=10):
-    c_max = c + b * threshold
-    c_min = c - b * threshold
     x = point[0]
     y = point[1]
-    below = a*x + b*y + c_max
-    above = a*x + b*y + c_min
-    if below < 0:
-        return False
-    if above > 0:
+    below = a*x + b*y + c
+    if abs(below) > b * threshold:
         return False
     return True
 
