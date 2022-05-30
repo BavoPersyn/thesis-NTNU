@@ -1201,3 +1201,18 @@ class Sequencer:
         d = self.T_VCF_CCF[1]
         return d * normal
 
+    def predict_epilines(self, essential, points):
+        """
+        Predict the epilines in the next image based on the current essential matrix and the used keypoints.
+        An epipolar line is described by its 3 parameters a, b and c of
+        :param essential: Essential matrix (3x3)
+        :param points: Keypoints in image
+        :return: Array of epipolar lines corresponding to the given points
+        """
+        # F = (K^-1)^T*E*K^-1
+        k_inv = np.linalg.inv(self.K)
+        F = np.matmul(np.transpose(k_inv), essential)
+        F = np.matmul(F, k_inv)
+        lines = cv2.computeCorrespondEpilines(points, 1, F)
+        return lines
+
