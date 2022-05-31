@@ -545,7 +545,7 @@ class Sequencer:
                     image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
                 found, essential = self.find_essential(index, title)
                 if not found:
-                    print("nie gevonden")
+                    print("Not found")
                 else:
                     lines = self.predict_epilines(essential, points1)
                     for line in lines:
@@ -877,10 +877,12 @@ class Sequencer:
         if point_type == 0:
             filename = self.folder + '/points/homography/IMG' + str(int(index - 2)).zfill(5) + '-' \
                        + str(int(index - 1)).zfill(5) + '.txt '
+            kp1, des1 = self.groundPointsFifo[0][0], self.groundPointsFifo[0][1]
         else:
             filename = self.folder + '/points/essential/IMG' + str(int(index - 2)).zfill(5) + '-' \
                        + str(int(index - 1)).zfill(5) + '.txt '
-        kp1, des1 = self.dispose(self.pointsFifo[0], point_type)
+            kp1, des1 = self.generalPointsFifo[0][0], self.generalPointsFifo[0][1]
+
         kp2, des2 = self.pointsFifo[1][0], self.pointsFifo[1][1]
         des1 = des1.astype('uint8')
         matches = self.matcher.match(des1, des2)
