@@ -339,6 +339,9 @@ class Sequencer:
         self.angles_plot, self.angles_ax = plt.subplots()
 
         self.pointsFifo = collections.deque(maxlen=self.BUF_SIZ)
+        self.groundPointsFifo = collections.deque(maxlen=self.BUF_SIZ)
+        self.generalPointsFifo = collections.deque(maxlen=self.BUF_SIZ)
+
         self.matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
         for base, dirs, files in os.walk('./Videos'):
             for directories in dirs:
@@ -381,6 +384,13 @@ class Sequencer:
             file = input("Give filename: ")
         self.show_menu()
 
+    def process_points(self):
+        points, descriptors = self.dispose(self.pointsFifo[0], 0)
+        self.groundPointsFifo.appendleft((points, descriptors))
+
+        points, descriptors = self.dispose(self.pointsFifo[0], 1)
+        self.generalPointsFifo.appendleft((points, descriptors))
+
     def read_images(self, sequence):
         """
         Read and interact with the images of a sequence, possibilities are the following:
@@ -407,8 +417,9 @@ class Sequencer:
         self.fill_fifo(sequence, 1, self.BUF_SIZ + 1)
 
         title = 'Sequence' + str(sequence).zfill(3)
-        points, descriptors = self.dispose(self.pointsFifo[0], 0)
-        out = self.show_image((points, points), self.imageFifo[0])
+        self.process_points()
+
+        out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
         cv2.imshow(title, out)
         cv2.setWindowTitle(title, title + ' Frame 1')
         eof = False
@@ -419,10 +430,10 @@ class Sequencer:
                 eof = self.add_next_image(sequence, index)
                 if eof:
                     continue
-                # points = self.detect_and_match()
                 self.detect(self.imageFifo[0], 0)
-                points, descriptors = self.dispose(self.pointsFifo[0], 0)
-                out = self.show_image((points, points), self.imageFifo[0])
+                self.process_points()
+
+                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
                 cv2.imshow(title, out)
                 index += 1
             elif key == ord('p'):
@@ -435,8 +446,8 @@ class Sequencer:
                     + '.jpg')
                 self.imageFifo.appendleft(self.process_image(self.buffer))
                 # points = self.detect_and_match()
-                points, descriptors = self.dispose(self.pointsFifo[0], 0)
-                out = self.show_image((points, points), self.imageFifo[0])
+                self.process_points()
+                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
                 cv2.imshow(title, out)
                 index -= 1
             elif key == ord('j'):
@@ -452,8 +463,8 @@ class Sequencer:
                 index += jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                points, descriptors = self.dispose(self.pointsFifo[0], 0)
-                out = self.show_image((points, points), self.imageFifo[0])
+                self.process_points()
+                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
                 cv2.imshow(title, out)
             elif key == ord('b'):
                 jump = input("How many frames do you want to jump backwards? ")
@@ -467,8 +478,8 @@ class Sequencer:
                 index -= jump
                 self.imageFifo.clear()
                 self.fill_fifo(sequence, start, index)
-                points, descriptors = self.dispose(self.pointsFifo[0], 0)
-                out = self.show_image((points, points), self.imageFifo[0])
+                self.process_points()
+                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
                 cv2.imshow(title, out)
             elif key == ord(' '):
                 key = None
@@ -476,8 +487,8 @@ class Sequencer:
                 while not key == ord(' ') and not eof:
                     eof = self.add_next_image(sequence, index)
                     self.detect(self.imageFifo[0])
-                    points, descriptors = self.dispose(self.pointsFifo[0], 0)
-                    out = self.show_image((points, points), self.imageFifo[0])
+                    self.process_points()
+                    out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
                     cv2.imshow(title, out)
                     index += 1
                     key = cv2.waitKey(1)
@@ -1091,13 +1102,10 @@ class Sequencer:
         img[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
         if points is None:
             return img
-        for i in range(len(points[0])):
-            point1 = (int(points[0][i][0]), int(points[0][i][1]))
-            point2 = (int(points[1][i][0]), int(points[1][i][1]))
+        for i in range(len(points)):
+            point = (int(points[i][0]), int(points[i][1]))
             color = (rand.randint(0, 255), rand.randint(0, 255), rand.randint(0, 255))
-            img = cv2.circle(img, point2, radius=6, color=color, thickness=3)
-            # img = cv2.circle(img, point2, radius=3, color=color, thickness=2)
-            # img = cv2.line(img, point1, point2, color=color, thickness=2)
+            img = cv2.circle(img, point, radius=6, color=color, thickness=3)
             # horizon line
             # img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
         return img
