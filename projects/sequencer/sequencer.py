@@ -330,8 +330,12 @@ class Sequencer:
     CAMERA_ANGLE_X = 0
     CAMERA_ANGLE_Y = 0
     CAMERA_ANGLE_Z = -15
-    T_VCF_CCF = np.array([-0.5, 100, 0])
+    T_VCF_CCF = np.array([-0.5, -1, 0])
     RADIUS = 10000
+    PITCH_THRESHOLD = 5
+    ROLL_THRESHOLD = 5
+    ANGLE_THRESHOLD = 5
+    T_THRESHOLD = 0.2
 
     def __init__(self):
         self.y2 = 0
