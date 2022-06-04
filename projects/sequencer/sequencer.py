@@ -537,11 +537,39 @@ class Sequencer:
                 cv2.imshow(title, image)
             elif key == ord('h'):
                 key = None
-                while not key == ord('h') and not eof:
+                while not key == ord('q') and not eof:
                     eof = self.add_next_image(sequence, index)
-                    exists, H, points = self.find_homography(index, title)
-                    if not exists:
+                    exists_h, H, points1, points2 = self.find_homography(index, title)
+                    if not exists_h:
                         break
+                    h_motion = self.decompose_homography(H, points1, points2)
+
+                    exists_e, E = self.find_essential(index, title)
+                    if not exists_e:
+                        e_motion = None
+                        print("no e-matrix")
+                    else:
+                        e_motion = self.decompose_essential(E)
+
+                    if h_motion is None:
+                        if e_motion is None:
+                            if self.rotation is None or self.translation is None:
+                                print('No motion analysis possible')
+                                break
+                            motion = (self.rotation, self.translation, self.normal)
+                        else:
+                            motion = e_motion
+                    else:
+                        if e_motion is None:
+                            motion = h_motion
+                        else:
+                            if self.check_motion_compliance(h_motion, e_motion):
+                                motion = self.combine_motion(h_motion, e_motion)
+                            else:
+                                motion = self.find_best_motion(h_motion, e_motion)
+
+                    self.update_transformations(motion[0], motion[1])
+
                     out = self.show_image(None, self.imageFifo[0])
                     self.plot_angles()
                     self.plot_positions()
@@ -556,7 +584,7 @@ class Sequencer:
             elif key == ord('l'):
                 # Load stored matches and show motion vectors
                 # Additionally, show epipolar lines
-                good_matches = self.load_points(index, title, 1)
+                good_matches = self.load_points(index, title, 0)
                 image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
                 image = reduce_contrast(image)
                 image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
@@ -574,14 +602,14 @@ class Sequencer:
                     image = cv2.circle(image, point1, radius=6, color=(255, 0, 0), thickness=3)
                     image = cv2.circle(image, point2, radius=6, color=(255, 0, 0), thickness=3)
                     image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
-                found, essential = self.find_essential(index, title)
-                if not found:
-                    print("Not found")
-                else:
-                    lines = self.predict_epilines(essential, points1)
-                    for line in lines:
-                        pts = points_on_line(line[0][0], line[0][1], line[0][2], self.width)
-                        image = cv2.line(image, pts[0], pts[1], color=(255, 0, 0), thickness=1)
+                # found, essential = self.find_essential(index, title)
+                # if not found:
+                #     print("Not found")
+                # else:
+                #     lines = self.predict_epilines(essential, points1)
+                #     for line in lines:
+                #         pts = points_on_line(line[0][0], line[0][1], line[0][2], self.width)
+                #         image = cv2.line(image, pts[0], pts[1], color=(255, 0, 0), thickness=1)
 
                 cv2.imshow(title, image)
             elif key == ord('u'):
@@ -597,27 +625,77 @@ class Sequencer:
                         height *= 2
                 print(height/2)
             elif key == ord('v'):
-                exists, H, points = self.find_homography(index, title)
+                exists, H, points1, points2 = self.find_homography(index, title)
                 if not exists:
                     print("No homography found")
                     continue
-                motion = self.decompose_homography(H, points)
+                motion = self.decompose_homography(H, points1, points2)
                 if motion is None:
                     print("No good motion parameters")
                 else:
                     print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
-                # tr = cv2.warpPerspective(self.imageFifo[0], H, (self.imageFifo[0].shape[1], self.imageFifo[0].shape[0]))
-                # cv2.imshow("test", tr)
-                retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-                for i in range(retval):
-                    self.estimate_horizon(normals[i])
-                # self.estimate_horizon(motion[2])
+                # retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
+                # for i in range(retval):
+                #     print(normals[i])
+                #     self.estimate_horizon(normals[i])
+                k = self.estimate_horizon(motion[2])
+                while k != ord('q'):
+                    if k == ord('n'):
+                        self.T_VCF_CCF[1] *= -1
+                    elif k == ord('d'):
+                        self.T_VCF_CCF[1] /= 2
+                    else:
+                        self.T_VCF_CCF[1] *= 2
+                    k = self.estimate_horizon(motion[2])
+                print(int(self.T_VCF_CCF[1]))
             elif key == ord('q'):
                 eof = True
             else:
                 continue
         cv2.destroyAllWindows()
         return
+
+    def find_best_motion(self, motion1, motion2):
+        previous_motion = (self.rotation, self.translation)
+        if self.check_motion_compliance(motion1, previous_motion):
+            return motion1
+        elif self.check_motion_compliance(motion2, previous_motion):
+            return motion2
+        else:
+            anglediff1 = calculate_rotation_angle(motion1[0]) - calculate_rotation_angle(self.rotation)
+            anglediff2 = calculate_rotation_angle(motion2[0]) - calculate_rotation_angle(self.rotation)
+            if anglediff1 < anglediff2:
+                return motion1
+            else:
+                return motion2
+
+    def combine_motion(self, motion1, motion2):
+        R1, t1 = motion1[0], motion1[1]
+        R2, t2 = motion2[0], motion2[1]
+        t1 /= np.linag.norm(t1)
+        t2 /= np.linag.norm(t2)
+        t = t1/2 + t2/2
+        angle1 = calculate_rotation_angle(R1)
+        angle2 = calculate_rotation_angle(R2)
+        axis1 = calculate_rotation_axis(R1)
+        axis2 = calculate_rotation_axis(R2)
+        angle = (angle1 + angle2)/2
+        axis = (axis1 + axis2)/2
+        R = rotation_matrix_from_axis_and_angle(axis, angle)
+        motion = (R, t)
+        return motion
+
+    def check_motion_compliance(self, motion1, motion2):
+        R1, t1 = motion1[0], motion1[1]
+        R2, t2 = motion2[0], motion2[1]
+        R = np.matmul(R1, np.transpose(R2))
+        rot_angle = calculate_rotation_angle(R)
+        if math.degrees(rot_angle) > self.ANGLE_THRESHOLD:
+            return False
+        t1 /= np.linalg.norm(t1)
+        t2 /= np.linalg.norm(t2)
+        t = t1 - t2
+        return np.linalg.norm(t) < self.T_THRESHOLD
 
     def create_mask(self, sequence):
         """
@@ -698,22 +776,57 @@ class Sequencer:
         cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
         return cells
 
-    def decompose_homography(self, homography, points):
+    def check_angles(self, rotation):
+        angles = rotation_matrix_to_euler_angles(rotation)
+        return angles[0] < self.PITCH_THRESHOLD and angles[2] < self.ROLL_THRESHOLD
+
+    def decompose_homography(self, homography, points1, points2):
         """
         Decompose homography and select the right motion parameters
-        :param homography:
-        :param points:
-        :return: Correct motion paramters
+        :param homography: Homography to decompose
+        :param points1: points in image 1
+        :param points2: points in image 2
+        :return: The best possible set of motion parameters (if any)
         """
         retval, rotations, translations, normals = cv2.decomposeHomographyMat(homography, self.K)
-        motion = None
+        motions = np.array([])
         best = 0
         for i in range(retval):
             # Check whether motion parameters could be right and how many points are "good points"
-            possible, goodpoints = check_possibility(rotations[i], translations[i], normals[i], points)
+            possible, goodpoints = check_possibility(rotations[i], translations[i], normals[i], points2)
             if possible and goodpoints > best:
-                motion = (rotations[i], translations[i], normals[i])
+                motions = np.append(motions, i)
                 best = goodpoints
+        if len(motions == 1):
+            i = int(motions[0])
+            motion = (rotations[i], translations[i], normals[i])
+            return motion
+        else:
+            for i in motions:
+                if self.check_angles(rotations[i]):
+                    motion = (rotations[i], translations[i], normals[i])
+                    return motion
+        return None
+
+    def decompose_essential(self, essential):
+        """
+        Decompose essential matrix and select the right motion parameters
+        :param essential: Essential matrix to decompose
+        :param points1: points in image 1
+        :param points2: points in image 2
+        :return: The best possible set of motion parameters (if any)
+        """
+        R1, R2, t = cv2.decomposeEssentialMat(essential)
+        # Make sure rotation is positive in z-direction
+        if t[2] < 0:
+            t = np.negative(t)
+        # Not sure how to find right rotation matrix
+        R = None
+        if self.check_angles(R1):
+            R = R1
+        elif self.check_angles(R2):
+            R = R2
+        motion = (R, t)
         return motion
 
     def to_birds_eye_view(self, image, h):
@@ -740,13 +853,13 @@ class Sequencer:
             i += 1
         if i < 4:
             print("Not enough matches")
-            return False, None, None
+            return False, None, None, None
         # print("Calculating Homography:")
         H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
         # TODO: Remove decomposition and update of transformation
-        retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-        self.update_transformations(rotations[0], translations[0])
-        return True, H, points2
+        # retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
+        # self.update_transformations(rotations[0], translations[0])
+        return True, H, points1, points2
 
     def find_essential(self, index, title):
         """
@@ -773,21 +886,37 @@ class Sequencer:
         self.update_transformations(R1, t)
         return True, E
 
-    def update_transformations(self, rotation, translation):
+    def update_transformations(self, rotation, translation, normal=None):
         """
         Updates transformation of car with current motion
         :param rotation: rotation matrix (3x3)
-        :param translation: translation vector(3x1)
+        :param translation: translation vector (3x1)
+        :param normal: normal vector (3x1)
         :return:
         """
-        T = form_transformation_matrix(rotation, translation)
+        self.rotation = rotation
+        self.translation = translation
+        if normal is not None:
+            self.normal = normal
+        t = translation / np.linalg.norm(translation)
+        t = self.ccf_to_wcf(t)
+        self.position += t
+        T = form_transformation_matrix(self.integrate_rotation(rotation), t)
         self.transformation = np.matmul(self.transformation, T)
         current_position = np.array([self.transformation[0][3],
                                      self.transformation[1][3],
                                      self.transformation[2][3]])
-        self.positions = np.append(self.positions, [current_position], axis=0)
+        self.positions = np.append(self.positions, [self.position], axis=0)
         angles = rotation_matrix_to_euler_angles(rotation)
         self.angles = np.append(self.angles, [angles], axis=0)
+
+    def integrate_rotation(self, rotation):
+        old_rot = np.zeros((3,3))
+        for i in range(3):
+            for j in range(3):
+                old_rot = self.transformation[i][i]
+        old_rot = np.transpose(old_rot)
+        return np.multiply(old_rot, rotation)
 
     def load_points(self, index, title, point_type=0):
         """
@@ -836,11 +965,11 @@ class Sequencer:
         # temp = self.vcf_to_ccf([10, 15, 0])
         # print(self.ccf_to_vcf(temp))
         # birds_eye_view(self.buffer, self.K, self.CAMERA_ANGLE_X, self.CAMERA_ANGLE_Z)
-        exists, H, points = self.find_homography(index, title)
+        exists, H, points1, points2 = self.find_homography(index, title)
         if not exists:
             print("No homography found")
             return
-        motion = self.decompose_homography(H, points)
+        motion = self.decompose_homography(H, points1, points2)
         if motion is None:
             print("No good motion parameters")
             return False, None
@@ -1016,6 +1145,34 @@ class Sequencer:
         keypoints = kps.reshape(-1, 2)
         descriptors = descs.reshape(-1, des_len)
         return keypoints, descriptors
+
+    def dont_dispose(self, kp_des, t):
+        kps = np.array([])
+        descs = np.array([])
+        points = kp_des[0]
+        des = kp_des[1]
+        des_len = len(des[0])
+        for i in range(len(points)):
+            point = points[i].pt
+            kps = np.append(kps, point)
+            descs = np.append(descs, np.array(des[i]))
+
+        keypoints = kps.reshape(-1, 2)
+        descriptors = descs.reshape(-1, des_len)
+        return keypoints, descriptors
+
+    def find_point_on_epipolar_line(self, old_point, old_descriptor, line, new_points, new_descriptors):
+        a, b, c = line
+        filter_array = []
+        for point in new_points:
+            filter_array.append(point_in_range(point, a, b, c))
+        possible_points = new_points[filter_array]
+        possible_descriptors = new_descriptors[filter_array].astype('uint8')
+        matches = self.matcher.match(np.array([old_descriptor]), possible_descriptors)
+        print(matches)
+
+        # match = (old_point, new_point)
+        # return matches
 
     def read_info(self, sequence):
         """
@@ -1203,7 +1360,8 @@ class Sequencer:
         r_ccf_to_vcf = np.transpose(make_rotation_matrix(self.CAMERA_ANGLE_X,
                                                          self.CAMERA_ANGLE_Y,
                                                          self.CAMERA_ANGLE_Z, radians=False))
-        vcf = np.add(vector, np.negative(self.T_VCF_CCF))
+        t_vcf_ccf = [[-self.T_VCF_CCF[0]], [-self.T_VCF_CCF[1]], [-self.T_VCF_CCF[2]]]
+        vcf = np.add(vector, t_vcf_ccf)
         vcf = np.matmul(r_ccf_to_vcf, vcf)
         return vcf
 
@@ -1219,7 +1377,7 @@ class Sequencer:
         wcf = np.matmul(t, vector)
         # rotate 180° around z-axis
         r = make_rotation_matrix(0, 0, 180, radians=False)
-        wcf = np.matmul(r, wcf)
+        wcf = np.matmul(r, wcf[:-1])
         return wcf
 
     def wcf_to_vcf(self, vector):
@@ -1275,13 +1433,12 @@ class Sequencer:
         p2[1] = p2[1] - self.horizon
         start = get_horizon_point(p1, p2, 0)
         end = get_horizon_point(p1, p2, self.width)
-        print(normal)
-        print(start, end)
         image = cv2.cvtColor(self.imageFifo[1], cv2.COLOR_GRAY2BGR)
         image = cv2.line(image, start, end, color=(255, 0, 0), thickness=2)
         cv2.imshow('horizon', image)
-        cv2.waitKey(0)
+        key = cv2.waitKey(0)
         cv2.destroyWindow('horizon')
+        return key
 
     def find_point_under_camera(self, normal):
         """
