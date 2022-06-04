@@ -87,9 +87,9 @@ def make_rotation_matrix(theta, psi, phi, radians=True):
     :return: rotation matrix (3x3)
     """
     if not radians:
-        theta = deg_to_rad(theta)
-        psi = deg_to_rad(psi)
-        phi = deg_to_rad(phi)
+        theta = math.radians(theta)
+        psi = math.radians(psi)
+        phi = math.radians(phi)
     rx = np.array(
         [[1, 0, 0],
          [0, math.cos(theta), -math.sin(theta)],
@@ -119,9 +119,9 @@ def rot_mat(theta, psi, phi, radians=True):
     :return: rotation matrix (3x3)
     """
     if not radians:
-        theta = deg_to_rad(theta)
-        psi = deg_to_rad(psi)
-        phi = deg_to_rad(phi)
+        theta = math.radians(theta)
+        psi = math.radians(psi)
+        phi = math.radians(phi)
     c1 = np.cos(theta)
     s1 = np.sin(theta)
     c2 = np.cos(psi)
@@ -996,8 +996,8 @@ class Sequencer:
         self.a = self.horizon - self.y2
         self.b = self.width
         self.c = 0
-        self.K[0][0] = self.width / (2 * tan(deg_to_rad(self.FOV_H / 2)))
-        self.K[1][1] = self.height / (2 * tan(deg_to_rad(self.FOV_V / 2)))
+        self.K[0][0] = self.width / (2 * tan(math.radians(self.FOV_H / 2)))
+        self.K[1][1] = self.height / (2 * tan(math.radians(self.FOV_V / 2)))
         self.K[0][2] = self.principal_point[0]
         self.K[1][2] = self.principal_point[1]
         self.K[2][2] = 1
