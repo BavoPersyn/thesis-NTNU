@@ -279,6 +279,45 @@ def point_in_range(point, a, b, c, threshold=10):
     return distance <= threshold
 
 
+def calculate_rotation_angle(rotation):
+    trace = 0
+    for i in range(3):
+        trace += rotation[i][i]
+    if trace > 3:
+        trace = math.floor(trace)
+    elif trace < -1:
+        trace = math.ceil(trace)
+    return math.acos((trace-1)/2)
+
+
+def calculate_rotation_axis(rotation):
+    axis = np.zeros((3, 1))
+    axis[0] = rotation[2][1] - rotation[1][2]
+    axis[1] = rotation[0][2] - rotation[2][0]
+    axis[2] = rotation[1][0] - rotation[0][1]
+    return axis/np.linalg.norm(axis)
+
+
+def rotation_matrix_from_axis_and_angle(axis, angle):
+    R = np.zeros((3, 3))
+    cos = math.cos(angle)
+    sin = math.sin(angle)
+    ux = axis[0][0]
+    uy = axis[1][0]
+    uz = axis[2][0]
+
+    R[0][0] = cos + ux**2 * (1 - cos)
+    R[0][1] = ux * uy * (1 - cos) - uz * sin
+    R[0][2] = ux * uz * (1 - cos) + uy * sin
+    R[1][0] = uy * ux * (1 - cos) + uz * sin
+    R[1][1] = cos + uy**2 * (1 - cos)
+    R[1][2] = uy * uz * (1 - cos) - ux * sin
+    R[2][0] = uz * ux * (1 - cos) - uy * sin
+    R[2][1] = uz * uy * (1 - cos) + ux * sin
+    R[2][2] = cos + uz**2 * (1 - cos)
+    return R
+
+
 # noinspection SpellCheckingInspection
 class Sequencer:
     SEQ_NUM = 1
