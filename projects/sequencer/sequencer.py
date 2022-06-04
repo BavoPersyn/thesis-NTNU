@@ -77,24 +77,6 @@ def form_transformation_matrix(r, t):
     return T
 
 
-def rad_to_deg(angle):
-    """
-    Convert angle from radians to degrees
-    :param angle: angle in radians
-    :return: angle in degrees
-    """
-    return angle / (2 * math.pi) * 360
-
-
-def deg_to_rad(angle):
-    """
-    Convert angle from degrees to radians
-    :param angle: angle in degrees
-    :return: angle in radians
-    """
-    return angle / 360.0 * 2 * math.pi
-
-
 def make_rotation_matrix(theta, psi, phi, radians=True):
     """
     Form rotation matrix from Euler angles
