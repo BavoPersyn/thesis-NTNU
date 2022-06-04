@@ -356,10 +356,15 @@ class Sequencer:
         self.c = 0
         self.K = np.zeros((3, 3))
         self.K_extra = np.zeros((3, 4))
-        self.position = np.array([0, 0, 0])
+
+        self.position = np.array([0., 0., 0.])
         self.transformation = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         self.positions = np.array([self.position])
         self.angles = np.array([[0, 0, 0]])
+        self.rotation = None
+        self.translation = None
+        self.normal = None
+
         self.pos_plot = plt.figure()
         self.ax = self.pos_plot.add_subplot(111, projection='3d')
         self.angles_plot, self.angles_ax = plt.subplots()
