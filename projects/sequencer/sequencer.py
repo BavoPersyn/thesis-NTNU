@@ -44,6 +44,7 @@ def rotation_matrix_to_euler_angles(rotation_matrix):
         x = math.atan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
         y = math.atan2(-rotation_matrix[2, 0], sy)
         z = 0
+    x, y, z = math.degrees(x), math.degrees(y), math.degrees(z)
 
     return np.array([x, y, z])
 
