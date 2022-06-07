@@ -14,8 +14,8 @@ from copy import copy
 
 def rotate_image(image, angle):
     """
-    Rotate image over angle
-    :param image: image to ratate
+    Rotate image over angle (purely for visualisation purposes)
+    :param image: image to rotate
     :param angle: angle over which to rotate
     :return: rotated image
     """
@@ -28,7 +28,7 @@ def rotate_image(image, angle):
 
 def rotation_matrix_to_euler_angles(rotation_matrix):
     """
-    convert rotation matrix to its Euler angles
+    Convert rotation matrix to corresponding Euler angles
     :param rotation_matrix: rotation matrix
     :return: Euler angles
     """
@@ -51,7 +51,7 @@ def rotation_matrix_to_euler_angles(rotation_matrix):
 
 def reduce_contrast(image):
     """
-    Reduce contrast in image to better view keypoints and matches
+    Reduce contrast in image to better view keypoints and matches drawn upon image
     :param image: image to reduce contrast of
     :return: contrast reduced image
     """
@@ -62,7 +62,11 @@ def reduce_contrast(image):
 
 def form_transformation_matrix(r, t):
     """
-    Form transformation matrix (4x4) from rotation and translation
+    Form transformation matrix (4x4) from rotation and translation like this:
+        r11, r12, r13, t1
+        r21, r22, r23, t2
+        r31, r32, r33, t3
+         0 ,  0 ,  0 , 1
     :param r: rotation matrix (3x3)
     :param t: translation vector (3x1)
     :return: transformation matrix
@@ -137,6 +141,7 @@ def rot_mat(theta, psi, phi, radians=True):
 def check_possibility(rotation, translation, normal, points):
     """
     Check if combination of motion parameters is a possible decomposition of homography
+    If it is a possible set of motion parameters, check the amount of points that are laying in front of the image plane
     :param rotation: Rotation matrix (3x3)
     :param translation: Translation vector (3x1)
     :param normal: Normal vector (3x1)
@@ -165,7 +170,9 @@ def check_possibility(rotation, translation, normal, points):
 
 def invert_transform_matrix(t_mat):
     """
-    Invert transformation matrix
+    Invert transformation matrix:
+        Invert rotation by transposing the rotation matrix
+        Invert translation by negating the translation vector
     :param t_mat: transformation matrix
     :return: inverted transformation matrix
     """
@@ -184,6 +191,7 @@ def invert_transform_matrix(t_mat):
     return new_t
 
 
+# TODO: remove
 def birds_eye_view(image, intrinsic, theta, phi, height=2000):
     rotation = make_rotation_matrix(90, 0, 0, radians=False)
     # adjust for height of camera
@@ -216,7 +224,7 @@ def rotation_matrix_from_vectors(vec1, vec2):
 
 def get_horizon_point(p1, p2, x):
     """
-    Calculate y-value of point on horizon line going through p1 and p2
+    Calculate y-value of point on horizon line (on image) going through p1 and p2
     :param p1: point1
     :param p2: point2
     :param x: x-value of point
@@ -233,10 +241,10 @@ def point_in_distance(normal, x, z, d):
     """
     Find y-value of point in the distance on plane with given normal vector (given its x and z coordinate and the
     distance of the camera center to the plane)
-    :param normal:
-    :param x:
-    :param z:
-    :param d:
+    :param normal: normal vector of plain
+    :param x: x-value of point
+    :param z: y-value of point
+    :param d: distance of camera to ground plane
     :return: Point in the distance (in homogeneous coordinates)
     """
     a, b, c = normal
@@ -280,6 +288,11 @@ def point_in_range(point, a, b, c, threshold=10):
 
 
 def calculate_rotation_angle(rotation):
+    """
+    Calculate the rotation angle of a rotation matrix
+    :param rotation: rotation matrix (3x3)
+    :return: rotation angle
+    """
     trace = 0
     for i in range(3):
         trace += rotation[i][i]
@@ -291,6 +304,11 @@ def calculate_rotation_angle(rotation):
 
 
 def calculate_rotation_axis(rotation):
+    """
+    Calculates the rotation axis of a rotation
+    :param rotation: rotation matrix (3x3)
+    :return: rotation axis
+    """
     axis = np.zeros((3, 1))
     axis[0] = rotation[2][1] - rotation[1][2]
     axis[1] = rotation[0][2] - rotation[2][0]
@@ -299,6 +317,12 @@ def calculate_rotation_axis(rotation):
 
 
 def rotation_matrix_from_axis_and_angle(axis, angle):
+    """
+    Calculates the rotation matrix based on the rotation angle and axis
+    :param axis: rotation axis (3x1)
+    :param angle: angle (in radians)
+    :return: rotation matrix (3x3)
+    """
     R = np.zeros((3, 3))
     cos = math.cos(angle)
     sin = math.sin(angle)
@@ -432,11 +456,13 @@ class Sequencer:
             space bar: continuously step forward in the sequence and display image (until space bar is pressed again)
             t: Manually step through keypoints of current image and matches with next image. Press G to save match,
                press any key to discard match
+            h: Calculates the homography and essential matrix between the two current frames, decomposes them and
+               updates the motion. Shows the motion parameters in a graph
             l: Load saved keypoint matches of current image with next image and display
             u: Test function
             v: Calculate homography, decompose it and predict horizon based on normal vector
             q: Quit program
-            :param sequence:
+            :param sequence: Number of sequence from which to load images
             :return:
         """
         bufindex = 0
@@ -541,8 +567,10 @@ class Sequencer:
                     eof = self.add_next_image(sequence, index)
                     exists_h, H, points1, points2 = self.find_homography(index, title)
                     if not exists_h:
-                        break
-                    h_motion = self.decompose_homography(H, points1, points2)
+                        h_motion = None
+                        print('No homography')
+                    else:
+                        h_motion = self.decompose_homography(H, points1, points2)
 
                     exists_e, E = self.find_essential(index, title)
                     if not exists_e:
@@ -550,7 +578,9 @@ class Sequencer:
                         print("no e-matrix")
                     else:
                         e_motion = self.decompose_essential(E)
-
+                    # If both are None: use previous motion
+                    # If only one is None: use other motion
+                    # If both are not None: combine if possible, otherwise choose best motion
                     if h_motion is None:
                         if e_motion is None:
                             if self.rotation is None or self.translation is None:
@@ -575,12 +605,7 @@ class Sequencer:
                     self.plot_positions()
                     cv2.imshow(title, out)
                     index += 1
-                    key = cv2.waitKey(1)
-            elif key == ord('f'):
-                # Shows 3d plot of movement so far
-                # self.plot_positions()
-                # show angles so far
-                self.plot_angles()
+                    key = cv2.waitKey(0)
             elif key == ord('l'):
                 # Load stored matches and show motion vectors
                 # Additionally, show epipolar lines
@@ -602,14 +627,14 @@ class Sequencer:
                     image = cv2.circle(image, point1, radius=6, color=(255, 0, 0), thickness=3)
                     image = cv2.circle(image, point2, radius=6, color=(255, 0, 0), thickness=3)
                     image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
-                # found, essential = self.find_essential(index, title)
-                # if not found:
-                #     print("Not found")
-                # else:
-                #     lines = self.predict_epilines(essential, points1)
-                #     for line in lines:
-                #         pts = points_on_line(line[0][0], line[0][1], line[0][2], self.width)
-                #         image = cv2.line(image, pts[0], pts[1], color=(255, 0, 0), thickness=1)
+                found, essential = self.find_essential(index, title)
+                if not found:
+                    print("Not found")
+                else:
+                    lines = self.predict_epilines(essential, points1)
+                    for line in lines:
+                        pts = points_on_line(line[0][0], line[0][1], line[0][2], self.width)
+                        image = cv2.line(image, pts[0], pts[1], color=(255, 0, 0), thickness=1)
 
                 cv2.imshow(title, image)
             elif key == ord('u'):
@@ -656,6 +681,12 @@ class Sequencer:
         return
 
     def find_best_motion(self, motion1, motion2):
+        """
+        Finds motion that is closest to last known motion
+        :param motion1:
+        :param motion2:
+        :return: best motion parameters
+        """
         previous_motion = (self.rotation, self.translation)
         if self.check_motion_compliance(motion1, previous_motion):
             return motion1
@@ -670,6 +701,12 @@ class Sequencer:
                 return motion2
 
     def combine_motion(self, motion1, motion2):
+        """
+        Combine two sets of motion parameters
+        :param motion1: rotation matrix and translation vector 1
+        :param motion2: rotation matrix and translation vector 2
+        :return: combined set of motion parameters
+        """
         R1, t1 = motion1[0], motion1[1]
         R2, t2 = motion2[0], motion2[1]
         t1 /= np.linag.norm(t1)
@@ -686,6 +723,12 @@ class Sequencer:
         return motion
 
     def check_motion_compliance(self, motion1, motion2):
+        """
+        Check whether motions are compatible (that means they don't differ too much)
+        :param motion1: rotation matrix and translation vector 1
+        :param motion2: rotation matrix and translation vector 2
+        :return: boolean that states whether motions comply
+        """
         R1, t1 = motion1[0], motion1[1]
         R2, t2 = motion2[0], motion2[1]
         R = np.matmul(R1, np.transpose(R2))
@@ -1421,7 +1464,6 @@ class Sequencer:
         :param normal: Ground plane normal vector
         :return:
         """
-        p = self.find_point_under_camera(normal)
         d = -self.T_VCF_CCF[1]
         point1 = point_in_distance(normal, 70, 100000, d)
         point2 = point_in_distance(normal, 60, 100000, d)
