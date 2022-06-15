@@ -191,22 +191,6 @@ def invert_transform_matrix(t_mat):
     return new_t
 
 
-# TODO: remove
-def birds_eye_view(image, intrinsic, theta, phi, height=2000):
-    rotation = make_rotation_matrix(90, 0, 0, radians=False)
-    # adjust for height of camera
-    for i in range(3):
-        rotation[i][2] = rotation[i][2] * height
-    homography = np.matmul(intrinsic, rotation)
-    bev = cv2.warpPerspective(image, homography, (image.shape[1], image.shape[0]))
-    cv2.imshow('birds eye view', bev)
-    key = cv2.waitKey(0)
-    cv2.destroyWindow('birds eye view')
-    if key == ord('q'):
-        return False
-    return True
-
-
 def rotation_matrix_from_vectors(vec1, vec2):
     """ Find the rotation matrix that aligns vec1 to vec2
     :param vec1: A 3d "source" vector
@@ -342,6 +326,29 @@ def rotation_matrix_from_axis_and_angle(axis, angle):
     return R
 
 
+def combine_motions(motion1, motion2):
+    """
+    Combine two sets of motion parameters
+    :param motion1: rotation matrix and translation vector 1
+    :param motion2: rotation matrix and translation vector 2
+    :return: combined set of motion parameters
+    """
+    R1, t1 = motion1[0], motion1[1]
+    R2, t2 = motion2[0], motion2[1]
+    t1 /= np.linag.norm(t1)
+    t2 /= np.linag.norm(t2)
+    t = t1/2 + t2/2
+    angle1 = calculate_rotation_angle(R1)
+    angle2 = calculate_rotation_angle(R2)
+    axis1 = calculate_rotation_axis(R1)
+    axis2 = calculate_rotation_axis(R2)
+    angle = (angle1 + angle2)/2
+    axis = (axis1 + axis2)/2
+    R = rotation_matrix_from_axis_and_angle(axis, angle)
+    motion = (R, t)
+    return motion
+
+
 # noinspection SpellCheckingInspection
 class Sequencer:
     SEQ_NUM = 1
@@ -390,7 +397,7 @@ class Sequencer:
         self.normal = None
 
         self.pos_plot = plt.figure()
-        self.ax = self.pos_plot.add_subplot(111, projection='3d')
+        self.ax = self.pos_plot.add_subplot(111, projection='3d', label='test')
         self.angles_plot, self.angles_ax = plt.subplots()
 
         self.pointsFifo = collections.deque(maxlen=self.BUF_SIZ)
@@ -440,11 +447,277 @@ class Sequencer:
         self.show_menu()
 
     def process_points(self):
+        """
+        Filter keypoints (for either homography and essential matrix calculation)
+        and add to the propper points FIFO
+        :return: None
+        """
         points, descriptors = self.dispose(self.pointsFifo[0], 0)
         self.groundPointsFifo.appendleft((points, descriptors))
 
         points, descriptors = self.dispose(self.pointsFifo[0], 1)
         self.generalPointsFifo.appendleft((points, descriptors))
+
+    def next_image(self, sequence, index, title):
+        """
+        Add next image to buffer and FIFO
+        Detect and filter keypoints
+        Show processed image with keypoints
+        :param sequence: sequence number
+        :param index: index of current image
+        :param title: title for window
+        :return: index of next frame (-1 when end of file is reached)
+        """
+        eof = self.add_next_image(sequence, index)
+        if eof:
+            return -1
+        self.detect(self.imageFifo[0], 0)
+        self.process_points()
+
+        out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
+        cv2.imshow(title, out)
+        index += 1
+        return index
+
+    def previous_image(self, sequence, index, title):
+        """
+        Add previous image to buffer and FIFO
+        Detect and filter keypoints
+        Show processed image with keypoints
+        :param sequence: sequence number
+        :param index: index of current image
+        :param title: title for window
+        :return: index of previous frame
+        """
+        self.buffer = cv2.imread(
+            self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5)
+            + '.jpg')
+        self.imageFifo.appendleft(self.process_image(self.buffer))
+        self.process_points()
+        out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
+        cv2.imshow(title, out)
+        index -= 1
+        return index
+
+    def jump_forward(self, sequence, index, title):
+        """
+        Jump forward in sequence.
+        Add that image to buffer and FIFO
+        Detect and filter keypoints
+        Show processed image with keypoints
+        :param sequence: sequence number
+        :param index: index of current image
+        :param title: title for window
+        :return: index of next frame (-1 when jump would be out of bounds)
+        """
+        jump = input("How many frames do you want to jump? ")
+        while not jump.isnumeric():
+            jump = input("Give (positive) number please: ")
+        jump = int(jump)
+        start = index - self.BUF_SIZ + jump
+        if not os.path.exists(
+                self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(start).zfill(5) + '.jpg'):
+            print("Jump not possible, end of file would be reached")
+            return -1
+        index += jump
+        self.imageFifo.clear()
+        self.fill_fifo(sequence, start, index)
+        self.process_points()
+        out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
+        cv2.imshow(title, out)
+        return index
+
+    def jump_backward(self, sequence, index, title):
+        """
+        Jump backward in sequence.
+        Add that image to buffer and FIFO
+        Detect and filter keypoints
+        Show processed image with keypoints
+        :param sequence: sequence number
+        :param index: index of current image
+        :param title: title for window
+        :return: index of next frame (-1 if jump would be out of bounds)
+        """
+        jump = input("How many frames do you want to jump backwards? ")
+        while not jump.isnumeric():
+            jump = input("Give (positive) number please: ")
+        jump = int(jump)
+        start = index - self.BUF_SIZ - jump
+        if start < 1:
+            print("Jump not possible, too far back.")
+            return -1
+        index -= jump
+        self.imageFifo.clear()
+        self.fill_fifo(sequence, start, index)
+        self.process_points()
+        out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
+        cv2.imshow(title, out)
+        return index
+
+    def play(self, sequence, index, title):
+        """
+        Continuously add next image to buffer and FIFO
+        Detect and filter keypoints
+        Show processed image with keypoints
+        :param sequence: sequence number
+        :param index: index of current image
+        :param title: title for window
+        :return: end of file reached, index of next frame
+        """
+        eof = False
+        key = None
+        while not key == ord(' ') and not eof:
+            eof = self.add_next_image(sequence, index)
+            self.detect(self.imageFifo[0])
+            self.process_points()
+            out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
+            cv2.imshow(title, out)
+            index += 1
+            key = cv2.waitKey(1)
+
+        return eof, index
+
+    def select_and_show_keypoints(self, index, title):
+        """
+        Manually select keypoints
+        Show the selected keypoints
+        :param index: index of current frame
+        :param title: title for window
+        :return: 
+        """
+        # Manually select keypoints
+        good_matches = self.select_keypoints(index, title)
+        image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+        image = reduce_contrast(image)
+        image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+        color = (0, 255, 0)
+        for match in good_matches:
+            image = cv2.circle(image, match[0], radius=6, color=color, thickness=3)
+            image = cv2.circle(image, match[1], radius=6, color=color, thickness=3)
+            image = cv2.line(image, match[0], match[1], color=color, thickness=2)
+        cv2.imshow(title, image)
+
+    def calculate_motion(self, sequence, index, title):
+        """
+        Continuously calculate motion based on homography and essential matrix (if possible)
+        :param sequence: sequence number
+        :param index: index of current image
+        :param title: title for window
+        :return: end of file reached, index of next frame
+        """
+        eof = False
+        key = None
+        while not key == ord('q') and not eof:
+            eof = self.add_next_image(sequence, index)
+            exists_h, H, points1, points2 = self.find_homography(index, title)
+            if not exists_h:
+                h_motion = None
+                print('No homography')
+            else:
+                h_motion = self.decompose_homography(H, points1, points2)
+
+            exists_e, E = self.find_essential(index, title)
+            if not exists_e:
+                e_motion = None
+                print("no e-matrix")
+            else:
+                e_motion = self.decompose_essential(E)
+            # If both are None: use previous motion
+            # If only one is None: use other motion
+            # If both are not None: combine if possible, otherwise choose best motion
+            if h_motion is None:
+                if e_motion is None:
+                    if self.rotation is None or self.translation is None:
+                        print('No motion analysis possible')
+                        break
+                    motion = (self.rotation, self.translation, self.normal)
+                else:
+                    motion = e_motion
+            else:
+                if e_motion is None:
+                    motion = h_motion
+                else:
+                    if self.check_motion_compliance(h_motion, e_motion):
+                        motion = combine_motions(h_motion, e_motion)
+                    else:
+                        motion = self.find_best_motion(h_motion, e_motion)
+
+            self.update_transformations(motion[0], motion[1])
+
+            out = self.show_image(None, self.imageFifo[0])
+            self.plot_angles()
+            self.plot_positions()
+            cv2.imshow(title, out)
+            index += 1
+            key = cv2.waitKey(0)
+        return eof, index
+
+    def show_motion_vectors(self, good_matches, index, title, epipolar=False):
+        """
+        Show keypoints in current and next frame with their resulting motion vectors
+        If epipolar is True, show epipolar lines based on essential matrix between keypoint matches
+        :param good_matches: list of matches of keypoints
+        :param index: index of current image
+        :param title: title for window
+        :param epipolar: Show epipolar lines or not
+        :return: image with motion vectors (and epipolar lines)
+        """
+        image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
+        image = reduce_contrast(image)
+        image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
+        points1 = np.zeros((len(good_matches), 2))
+        points2 = np.zeros((len(good_matches), 2))
+        i = 0
+        for match in good_matches:
+            point1 = (match[0], match[1])
+            point2 = (match[2], match[3])
+            points1[i][0] = point1[0]
+            points1[i][1] = point1[1]
+            points2[i][0] = point2[0]
+            points2[i][1] = point2[1]
+            i = i + 1
+            image = cv2.circle(image, point1, radius=6, color=(255, 0, 0), thickness=3)
+            image = cv2.circle(image, point2, radius=6, color=(255, 0, 0), thickness=3)
+            image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
+        if epipolar:
+            found, essential = self.find_essential(index, title)
+            if not found:
+                print("Not found")
+            else:
+                lines = self.predict_epilines(essential, points1)
+                for line in lines:
+                    pts = points_on_line(line[0][0], line[0][1], line[0][2], self.width)
+                    image = cv2.line(image, pts[0], pts[1], color=(255, 0, 0), thickness=1)
+        return image
+
+    def find_horizon_line(self, index, title):
+        """
+        Calculate homography to find horizon line
+        Height can be changed manually to find horizon line at right height
+        :param index: index of current image
+        :param title: title for window
+        :return:
+        """
+        exists, H, points1, points2 = self.find_homography(index, title)
+        if not exists:
+            print("No homography found")
+            return
+        motion = self.decompose_homography(H, points1, points2)
+        if motion is None:
+            print("No good motion parameters")
+            return
+        else:
+            print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
+        k = self.estimate_horizon(motion[2])
+        while k != ord('q'):
+            if k == ord('n'):
+                self.T_VCF_CCF[1] *= -1
+            elif k == ord('d'):
+                self.T_VCF_CCF[1] /= 2
+            else:
+                self.T_VCF_CCF[1] *= 2
+            k = self.estimate_horizon(motion[2])
+        print(int(self.T_VCF_CCF[1]))
 
     def read_images(self, sequence):
         """
@@ -484,158 +757,33 @@ class Sequencer:
             cv2.setWindowTitle(title, title + ' Frame ' + str(index + bufindex - self.BUF_SIZ))
             key = cv2.waitKey(0)
             if key == ord('n'):
-                eof = self.add_next_image(sequence, index)
-                if eof:
+                index = self.next_image(sequence, index, title)
+                if index == -1:
                     continue
-                self.detect(self.imageFifo[0], 0)
-                self.process_points()
-
-                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
-                cv2.imshow(title, out)
-                index += 1
             elif key == ord('p'):
                 if index <= 0:
                     print("Beginning of sequence.")
                     continue
-                # add image to the FIFO
-                self.buffer = cv2.imread(
-                    self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(int(index)).zfill(5)
-                    + '.jpg')
-                self.imageFifo.appendleft(self.process_image(self.buffer))
-                # points = self.detect_and_match()
-                self.process_points()
-                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
-                cv2.imshow(title, out)
-                index -= 1
+                index = self.previous_image(sequence, index, title)
             elif key == ord('j'):
-                jump = input("How many frames do you want to jump? ")
-                while not jump.isnumeric():
-                    jump = input("Give (positive) number please: ")
-                jump = int(jump)
-                start = index - self.BUF_SIZ + jump
-                if not os.path.exists(
-                        self.folder + '/SEQ' + str(sequence).zfill(3) + 'IMG' + str(start).zfill(5) + '.jpg'):
-                    print("Jump not possible, end of file would be reached")
-                    continue
-                index += jump
-                self.imageFifo.clear()
-                self.fill_fifo(sequence, start, index)
-                self.process_points()
-                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
-                cv2.imshow(title, out)
+                i = self.jump_forward(sequence, index, title)
+                if i > 0:
+                    index = i
             elif key == ord('b'):
-                jump = input("How many frames do you want to jump backwards? ")
-                while not jump.isnumeric():
-                    jump = input("Give (positive) number please: ")
-                jump = int(jump)
-                start = index - self.BUF_SIZ - jump
-                if start < 1:
-                    print("Jump not possible, too far back.")
-                    continue
-                index -= jump
-                self.imageFifo.clear()
-                self.fill_fifo(sequence, start, index)
-                self.process_points()
-                out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
-                cv2.imshow(title, out)
+                i = self.jump_backward(sequence, index, title)
+                if i > 0:
+                    index = i
             elif key == ord(' '):
-                key = None
-                # cv2.setWindowTitle(title, title + ' playing.')
-                while not key == ord(' ') and not eof:
-                    eof = self.add_next_image(sequence, index)
-                    self.detect(self.imageFifo[0])
-                    self.process_points()
-                    out = self.show_image(self.groundPointsFifo[0][0], self.imageFifo[0])
-                    cv2.imshow(title, out)
-                    index += 1
-                    key = cv2.waitKey(1)
+                eof, index = self.play(sequence, index, title)
             elif key == ord('t'):
-                # Manually select keypoints
-                good_matches = self.select_keypoints(index, title)
-                image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-                image = reduce_contrast(image)
-                image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
-                color = (0, 255, 0)
-                for match in good_matches:
-                    image = cv2.circle(image, match[0], radius=6, color=color, thickness=3)
-                    image = cv2.circle(image, match[1], radius=6, color=color, thickness=3)
-                    image = cv2.line(image, match[0], match[1], color=color, thickness=2)
-                cv2.imshow(title, image)
+                self.select_and_show_keypoints(index, title)
             elif key == ord('h'):
-                key = None
-                while not key == ord('q') and not eof:
-                    eof = self.add_next_image(sequence, index)
-                    exists_h, H, points1, points2 = self.find_homography(index, title)
-                    if not exists_h:
-                        h_motion = None
-                        print('No homography')
-                    else:
-                        h_motion = self.decompose_homography(H, points1, points2)
-
-                    exists_e, E = self.find_essential(index, title)
-                    if not exists_e:
-                        e_motion = None
-                        print("no e-matrix")
-                    else:
-                        e_motion = self.decompose_essential(E)
-                    # If both are None: use previous motion
-                    # If only one is None: use other motion
-                    # If both are not None: combine if possible, otherwise choose best motion
-                    if h_motion is None:
-                        if e_motion is None:
-                            if self.rotation is None or self.translation is None:
-                                print('No motion analysis possible')
-                                break
-                            motion = (self.rotation, self.translation, self.normal)
-                        else:
-                            motion = e_motion
-                    else:
-                        if e_motion is None:
-                            motion = h_motion
-                        else:
-                            if self.check_motion_compliance(h_motion, e_motion):
-                                motion = self.combine_motion(h_motion, e_motion)
-                            else:
-                                motion = self.find_best_motion(h_motion, e_motion)
-
-                    self.update_transformations(motion[0], motion[1])
-
-                    out = self.show_image(None, self.imageFifo[0])
-                    self.plot_angles()
-                    self.plot_positions()
-                    cv2.imshow(title, out)
-                    index += 1
-                    key = cv2.waitKey(0)
+                eof, index = self.calculate_motion(sequence, index, title)
             elif key == ord('l'):
                 # Load stored matches and show motion vectors
                 # Additionally, show epipolar lines
                 good_matches = self.load_points(index, title, 0)
-                image = cv2.cvtColor(self.imageFifo[0], cv2.COLOR_GRAY2BGR)
-                image = reduce_contrast(image)
-                image[np.where((self.ego_car <= [0, 0, 0]).all(axis=2))] = self.black
-                points1 = np.zeros((len(good_matches), 2))
-                points2 = np.zeros((len(good_matches), 2))
-                i = 0
-                for match in good_matches:
-                    point1 = (match[0], match[1])
-                    point2 = (match[2], match[3])
-                    points1[i][0] = point1[0]
-                    points1[i][1] = point1[1]
-                    points2[i][0] = point2[0]
-                    points2[i][1] = point2[1]
-                    i = i + 1
-                    image = cv2.circle(image, point1, radius=6, color=(255, 0, 0), thickness=3)
-                    image = cv2.circle(image, point2, radius=6, color=(255, 0, 0), thickness=3)
-                    image = cv2.line(image, point1, point2, color=(255, 0, 0), thickness=3)
-                found, essential = self.find_essential(index, title)
-                if not found:
-                    print("Not found")
-                else:
-                    lines = self.predict_epilines(essential, points1)
-                    for line in lines:
-                        pts = points_on_line(line[0][0], line[0][1], line[0][2], self.width)
-                        image = cv2.line(image, pts[0], pts[1], color=(255, 0, 0), thickness=1)
-
+                image = self.show_motion_vectors(good_matches, index, title, True)
                 cv2.imshow(title, image)
             elif key == ord('u'):
                 # Test birds eye view
@@ -650,29 +798,7 @@ class Sequencer:
                         height *= 2
                 print(height/2)
             elif key == ord('v'):
-                exists, H, points1, points2 = self.find_homography(index, title)
-                if not exists:
-                    print("No homography found")
-                    continue
-                motion = self.decompose_homography(H, points1, points2)
-                if motion is None:
-                    print("No good motion parameters")
-                else:
-                    print(motion[0], '\n', motion[1], '\n', motion[2], '\n', np.linalg.norm(motion[1]))
-                # retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-                # for i in range(retval):
-                #     print(normals[i])
-                #     self.estimate_horizon(normals[i])
-                k = self.estimate_horizon(motion[2])
-                while k != ord('q'):
-                    if k == ord('n'):
-                        self.T_VCF_CCF[1] *= -1
-                    elif k == ord('d'):
-                        self.T_VCF_CCF[1] /= 2
-                    else:
-                        self.T_VCF_CCF[1] *= 2
-                    k = self.estimate_horizon(motion[2])
-                print(int(self.T_VCF_CCF[1]))
+                self.find_horizon_line(index, title)
             elif key == ord('q'):
                 eof = True
             else:
@@ -687,6 +813,9 @@ class Sequencer:
         :param motion2:
         :return: best motion parameters
         """
+        if self.rotation is None or self.translation is None:
+            # If no motion is found yet, use motion by essential matrix
+            return motion2
         previous_motion = (self.rotation, self.translation)
         if self.check_motion_compliance(motion1, previous_motion):
             return motion1
@@ -700,28 +829,6 @@ class Sequencer:
             else:
                 return motion2
 
-    def combine_motion(self, motion1, motion2):
-        """
-        Combine two sets of motion parameters
-        :param motion1: rotation matrix and translation vector 1
-        :param motion2: rotation matrix and translation vector 2
-        :return: combined set of motion parameters
-        """
-        R1, t1 = motion1[0], motion1[1]
-        R2, t2 = motion2[0], motion2[1]
-        t1 /= np.linag.norm(t1)
-        t2 /= np.linag.norm(t2)
-        t = t1/2 + t2/2
-        angle1 = calculate_rotation_angle(R1)
-        angle2 = calculate_rotation_angle(R2)
-        axis1 = calculate_rotation_axis(R1)
-        axis2 = calculate_rotation_axis(R2)
-        angle = (angle1 + angle2)/2
-        axis = (axis1 + axis2)/2
-        R = rotation_matrix_from_axis_and_angle(axis, angle)
-        motion = (R, t)
-        return motion
-
     def check_motion_compliance(self, motion1, motion2):
         """
         Check whether motions are compatible (that means they don't differ too much)
@@ -731,6 +838,7 @@ class Sequencer:
         """
         R1, t1 = motion1[0], motion1[1]
         R2, t2 = motion2[0], motion2[1]
+        print(R1, '\n', R2)
         R = np.matmul(R1, np.transpose(R2))
         rot_angle = calculate_rotation_angle(R)
         if math.degrees(rot_angle) > self.ANGLE_THRESHOLD:
@@ -796,30 +904,12 @@ class Sequencer:
         self.imageFifo.appendleft(self.process_image(self.buffer))
         return False
 
-    def bucket(self, points):
-        # TODO: check if function can be removed
-        """
-        Divide image into buckets, keep only one keypoint for each bucket.
-        :param points:
-        :return: Array of remaining keypoints (max 1 per bucket)
-        """
-        cells = [[[0, 0]] * self.HOR_CELLS] * self.VER_CELLS
-        filled = 0
-        full = self.HOR_CELLS * self.VER_CELLS
-        points1, points2 = points[0], points[1]
-        b = self.width / self.HOR_CELLS
-        h = (self.height - self.horizon) / self.VER_CELLS
-        for point in points1:
-            x, y = int(point[0] / b), int(point[1] / h)
-            if all(v == 0 for v in cells[y][x]):
-                cells[y][x] = np.array(point)
-                filled += 1
-            if filled == full:
-                break
-        cells = np.array(cells).reshape((self.HOR_CELLS * self.VER_CELLS, 2))
-        return cells
-
     def check_angles(self, rotation):
+        """
+        Check whether angles of roation matrix are smaller than threshold values
+        :param rotation: Rotation matrix (3x3)
+        :return: boolean that denotes whether angles are both smaller than threshold
+        """
         angles = rotation_matrix_to_euler_angles(rotation)
         return angles[0] < self.PITCH_THRESHOLD and angles[2] < self.ROLL_THRESHOLD
 
@@ -872,12 +962,6 @@ class Sequencer:
         motion = (R, t)
         return motion
 
-    def to_birds_eye_view(self, image, h):
-        # TODO: Remove  faulty function
-        out = cv2.warpPerspective(image, h, (self.width, self.height))
-        cv2.imshow('birdseyview', out)
-        cv2.waitKey(0)
-
     def find_homography(self, index, title):
         """
         Estimate homography between frames index and index + 1
@@ -899,9 +983,6 @@ class Sequencer:
             return False, None, None, None
         # print("Calculating Homography:")
         H, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-        # TODO: Remove decomposition and update of transformation
-        # retval, rotations, translations, normals = cv2.decomposeHomographyMat(H, self.K)
-        # self.update_transformations(rotations[0], translations[0])
         return True, H, points1, points2
 
     def find_essential(self, index, title):
@@ -924,9 +1005,6 @@ class Sequencer:
             print("Not enough matches")
             return False, None
         E, mask = cv2.findEssentialMat(points1, points2, self.K, cv2.RANSAC)
-        # TODO: remove decomposition and transformation update
-        R1, R2, t = cv2.decomposeEssentialMat(E)
-        self.update_transformations(R1, t)
         return True, E
 
     def update_transformations(self, rotation, translation, normal=None):
@@ -944,7 +1022,7 @@ class Sequencer:
         t = translation / np.linalg.norm(translation)
         t = self.ccf_to_wcf(t)
         self.position += t
-        T = form_transformation_matrix(self.integrate_rotation(rotation), t)
+        T = form_transformation_matrix(rotation, t)
         self.transformation = np.matmul(self.transformation, T)
         current_position = np.array([self.transformation[0][3],
                                      self.transformation[1][3],
@@ -954,7 +1032,7 @@ class Sequencer:
         self.angles = np.append(self.angles, [angles], axis=0)
 
     def integrate_rotation(self, rotation):
-        old_rot = np.zeros((3,3))
+        old_rot = np.zeros((3, 3))
         for i in range(3):
             for j in range(3):
                 old_rot = self.transformation[i][i]
@@ -1266,48 +1344,6 @@ class Sequencer:
             self.pointsFifo.appendleft((kp, des))
         else:
             self.pointsFifo.append((kp, des))
-
-    def detect_and_match(self):
-        # TODO: Remove function if necessary
-        # convert images in buffer to grayscale
-        img1 = self.imageFifo[-1]
-        img2 = self.imageFifo[-2]
-        # compute keypoints and descriptors
-        kp1, des1 = self.orb.detectAndCompute(img1, self.mask)
-        kp2, des2 = self.orb.detectAndCompute(img2, self.mask)
-        # match keypoints and sort them
-        matches = self.matcher.match(des1, des2, None)
-        matches = sorted(matches, key=lambda x: x.distance)
-        points1 = np.zeros((len(matches), 2), dtype=np.float32)
-        points2 = np.zeros((len(matches), 2), dtype=np.float32)
-        good_matches = []
-        j = 0
-        for match in matches:
-
-            p1 = (int(kp1[match.queryIdx].pt[0]), int(kp1[match.queryIdx].pt[1]))
-            p2 = (int(kp2[match.trainIdx].pt[0]), int(kp2[match.trainIdx].pt[1]))
-            # Check if point is part above the horizon
-            above = (self.a * p1[0] + self.b * p1[1] + self.c) < 0 or (self.a * p2[0] + self.b * p2[1] + self.c) < 0
-            if above:
-                # at least one of the keypoints is part of the ego-car or above the horizon, this match will be ignored
-                continue
-            good_matches.append(match)
-            points1[j, :] = kp1[match.queryIdx].pt
-            points2[j, :] = kp2[match.trainIdx].pt
-            j += 1
-        points1 = np.reshape(points1[points1 != [0., 0.]], (-1, 2))
-        points2 = np.reshape(points2[points2 != [0., 0.]], (-1, 2))
-        if j <= 4:
-            print("Not enough points to calculate Homography.")
-        else:
-            h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-            # print("Estimated homography : \n", h)
-        # show the best 20 matches
-        # out = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:20], None)
-        # out = cv2.pyrDown(out)
-        # cv2.imshow("Matches", out)
-
-        return [points1, points2]
 
     def process_image(self, image):
         """
