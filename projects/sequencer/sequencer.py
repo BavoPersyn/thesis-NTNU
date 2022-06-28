@@ -1377,6 +1377,13 @@ class Sequencer:
             img = cv2.circle(img, point, radius=6, color=color, thickness=3)
             # horizon line
             # img = cv2.line(img, (0, 0), (self.width, self.y2 - self.horizon), color=(0, 0, 0), thickness=2)
+        # # Draw bucket grid
+        # w = int(self.width/self.HOR_CELLS)
+        # h = int(self.height/self.VER_CELLS)
+        # for i in range(1, self.HOR_CELLS):
+        #     img = cv2.line(img, (i*w, 0), (i*w, self.height), color=(0, 0, 0), thickness=1)
+        # for i in range(1, self.HOR_CELLS):
+        #     img = cv2.line(img, (0, i*h), (self.width, i*h), color=(0, 0, 0), thickness=1)
         return img
 
     def cropped_to_original(self, coordinate):
